@@ -4,10 +4,56 @@
   <meta charset="UTF-8">
   <title>7-Card Stud Poker Deluxe</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="config.js"></script>
   <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at center, #142327 0%, #080f11 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #239b56 0%, #196f3d 60%, #0f4024 100%);
+      --felt-border: #3d2314;
+      --accent-color: #f1c40f;
+      --panel-bg: rgba(13, 23, 27, 0.92);
+      --card-back: repeating-linear-gradient(45deg, #1c2833, #1c2833 5px, #273746 5px, #273746 10px);
+    }
+
+    [data-theme="midnight-blue"] {
+      --bg-gradient: radial-gradient(circle at center, #0e1e2d 0%, #050c13 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1b4f72 0%, #154360 60%, #0b2230 100%);
+      --felt-border: #1a252f;
+      --accent-color: #00d2d3;
+      --panel-bg: rgba(10, 20, 30, 0.92);
+      --card-back: repeating-linear-gradient(45deg, #0b1a26, #0b1a26 5px, #142d40 5px, #142d40 10px);
+    }
+
+    [data-theme="crimson-vip"] {
+      --bg-gradient: radial-gradient(circle at center, #2b1114 0%, #100607 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #922b21 0%, #78281f 60%, #44140e 100%);
+      --felt-border: #2c120a;
+      --accent-color: #f39c12;
+      --panel-bg: rgba(30, 12, 14, 0.92);
+      --card-back: repeating-linear-gradient(45deg, #3d0c0c, #3d0c0c 5px, #5c1414 5px, #5c1414 10px);
+    }
+
+    [data-theme="cyber-neon"] {
+      --bg-gradient: radial-gradient(circle at center, #1b0c29 0%, #08030d 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #4a154b 0%, #2e0854 60%, #160324 100%);
+      --felt-border: #00d2d3;
+      --accent-color: #ff007f;
+      --panel-bg: rgba(22, 7, 33, 0.92);
+      --card-back: repeating-linear-gradient(45deg, #2b0438, #2b0438 5px, #4d0963 5px, #4d0963 10px);
+    }
+
+    [data-theme="golden-lounge"] {
+      --bg-gradient: radial-gradient(circle at center, #242217 0%, #0f0e08 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #4d4427 0%, #2e2815 60%, #1a160a 100%);
+      --felt-border: #7d6608;
+      --accent-color: #f1c40f;
+      --panel-bg: rgba(26, 23, 13, 0.94);
+      --card-back: repeating-linear-gradient(45deg, #3b3311, #3b3311 5px, #5c501e 5px, #5c501e 10px);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: radial-gradient(circle at center, #142327 0%, #080f11 100%);
+      background: var(--bg-gradient);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       color: #fff;
       display: flex;
@@ -16,25 +62,45 @@
       min-height: 100vh;
       padding: 10px;
       overflow-x: hidden;
+      transition: background 0.4s ease;
     }
 
     header {
       display: flex;
       align-items: center;
-      gap: 15px;
+      justify-content: space-between;
+      width: 96vw;
+      max-width: 1040px;
       margin-bottom: 8px;
     }
     h1 {
       font-size: 1.6rem;
       font-weight: 900;
       letter-spacing: 1px;
-      background: linear-gradient(180deg, #f9e79f 0%, #d4ac0d 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+      color: var(--accent-color);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.8);
     }
+    .header-btns {
+      display: flex;
+      gap: 10px;
+    }
+    .icon-btn {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--accent-color);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
 
-    /* Modal Framework */
+    /* Modals */
     .modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -49,18 +115,18 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .modal-box {
-      background: linear-gradient(135deg, #1b2d34 0%, #111d21 100%);
-      border: 2px solid #f1c40f;
+      background: var(--panel-bg);
+      border: 2px solid var(--accent-color);
       border-radius: 16px;
       padding: 24px;
       width: 90%;
       max-width: 440px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.9), 0 0 25px rgba(241, 196, 15, 0.2);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.9);
       text-align: center;
     }
     .modal-box h2 {
-      color: #f1c40f;
-      margin-bottom: 12px;
+      color: var(--accent-color);
+      margin-bottom: 14px;
       font-size: 1.4rem;
     }
     .modal-box input, .modal-box select {
@@ -69,7 +135,7 @@
       margin-bottom: 12px;
       border-radius: 8px;
       border: 1px solid #324c57;
-      background: #0d171a;
+      background: rgba(0,0,0,0.5);
       color: #fff;
       font-size: 1rem;
     }
@@ -88,7 +154,7 @@
     }
     .modal-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-    /* River Card Orientation Cards */
+    /* River Choices */
     .river-choices {
       display: flex;
       gap: 15px;
@@ -96,8 +162,8 @@
       justify-content: center;
     }
     .river-card-opt {
-      background: #243b44;
-      border: 2px solid #3c6170;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid var(--accent-color);
       border-radius: 12px;
       padding: 15px;
       width: 130px;
@@ -105,27 +171,27 @@
       transition: all 0.25s;
     }
     .river-card-opt:hover {
-      border-color: #f1c40f;
       transform: translateY(-4px);
       box-shadow: 0 6px 20px rgba(241, 196, 15, 0.3);
     }
     .river-card-opt .icon { font-size: 2.2rem; margin-bottom: 6px; }
     .river-card-opt .label { font-size: 0.9rem; font-weight: bold; }
 
-    /* The Luxury Felt Table */
+    /* Poker Table */
     .table {
       position: relative;
       width: 96vw;
       max-width: 1040px;
       height: 590px;
-      background: radial-gradient(ellipse at center, #239b56 0%, #196f3d 60%, #0f4024 100%);
-      border: 18px solid #3d2314;
+      background: var(--felt-gradient);
+      border: 18px solid var(--felt-border);
       border-radius: 240px;
       box-shadow: inset 0 0 60px rgba(0,0,0,0.85), 0 20px 50px rgba(0,0,0,0.95);
       display: flex;
       justify-content: center;
       align-items: center;
       margin-bottom: 10px;
+      transition: all 0.4s ease;
     }
 
     .center-pot-area {
@@ -136,28 +202,28 @@
       z-index: 10;
     }
     .pot-badge {
-      background: rgba(8, 15, 17, 0.85);
-      border: 1px solid rgba(241, 196, 15, 0.4);
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid var(--accent-color);
       padding: 8px 24px;
       border-radius: 20px;
       text-align: center;
       box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     }
     .pot-badge .pot-title { font-size: 0.7rem; color: #bbb; letter-spacing: 1px; }
-    .pot-badge .pot-amount { font-size: 1.6rem; color: #f1c40f; font-weight: 900; }
+    .pot-badge .pot-amount { font-size: 1.6rem; color: var(--accent-color); font-weight: 900; }
     .street-tag { font-size: 0.8rem; color: #00d2d3; font-weight: bold; }
 
-    /* Simplified Wild Box */
+    /* Wild Card HUD */
     .wild-hud {
-      background: rgba(10, 20, 24, 0.92);
-      border: 1.5px solid #e67e22;
+      background: var(--panel-bg);
+      border: 1.5px solid var(--accent-color);
       border-radius: 8px;
       padding: 4px 10px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .wild-hud-title { font-size: 0.65rem; color: #f39c12; font-weight: 900; letter-spacing: 0.5px; }
+    .wild-hud-title { font-size: 0.65rem; color: var(--accent-color); font-weight: 900; letter-spacing: 0.5px; }
     .compact-wild-card {
       background: #fff;
       border-radius: 4px;
@@ -174,10 +240,10 @@
     .suit-b { color: #111; }
     .suit-r { color: #e74c3c; }
 
-    /* Player Pods */
+    /* Seats */
     .player-seat {
       position: absolute;
-      background: rgba(13, 23, 27, 0.92);
+      background: var(--panel-bg);
       border-radius: 14px;
       padding: 8px 12px;
       min-width: 175px;
@@ -186,14 +252,11 @@
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .player-seat.active-turn {
-      border-color: #f1c40f;
-      box-shadow: 0 0 20px #f1c40f, inset 0 0 10px rgba(241, 196, 15, 0.3);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 20px var(--accent-color);
       transform: scale(1.03);
     }
-    .player-seat.folded {
-      opacity: 0.35;
-      filter: grayscale(1);
-    }
+    .player-seat.folded { opacity: 0.35; filter: grayscale(1); }
     #seat-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }
     #seat-1 { left: 15px; top: 44%; transform: translateY(-50%); }
     #seat-2 { top: 12px; left: 50%; transform: translateX(-50%); }
@@ -202,7 +265,7 @@
     .seat-header { display: flex; justify-content: space-between; align-items: center; }
     .seat-name { font-size: 0.85rem; font-weight: bold; }
     .seat-chips { font-size: 0.85rem; color: #2ecc71; font-weight: 900; }
-    .seat-badge { font-size: 0.65rem; color: #f39c12; font-weight: 600; margin-bottom: 4px; }
+    .seat-badge { font-size: 0.65rem; color: var(--accent-color); font-weight: 600; margin-bottom: 4px; }
     .seat-status { font-size: 0.75rem; color: #3498db; min-height: 15px; font-weight: 600; }
 
     /* Cards */
@@ -229,7 +292,7 @@
     }
     .card.red { color: #e74c3c; }
     .card.back {
-      background: repeating-linear-gradient(45deg, #1c2833, #1c2833 5px, #273746 5px, #273746 10px);
+      background: var(--card-back);
       border: 1px solid #111;
       color: transparent;
     }
@@ -237,17 +300,17 @@
       content: '★';
       position: absolute;
       top: -5px; right: -2px;
-      color: #f39c12;
+      color: var(--accent-color);
       font-size: 11px;
     }
 
-    /* Action Control Dock */
+    /* Control Dock */
     .control-dock {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      background: #142226;
-      border: 1px solid #23383f;
+      background: var(--panel-bg);
+      border: 1px solid rgba(255,255,255,0.1);
       padding: 10px 18px;
       border-radius: 14px;
       align-items: center;
@@ -279,14 +342,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #0d1719;
+      background: rgba(0,0,0,0.5);
       padding: 6px 12px;
       border-radius: 8px;
     }
-    .slider-box input[type="range"] { cursor: pointer; }
     .preset-btn {
-      background: #233b44;
-      border: 1px solid #375b68;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
       color: #eee;
       border-radius: 4px;
       padding: 4px 8px;
@@ -295,11 +357,10 @@
       cursor: pointer;
     }
 
-    /* Live Game Commentary Log */
     .game-log {
       width: 96vw;
       max-width: 1040px;
-      background: #0d1719;
+      background: var(--panel-bg);
       border-radius: 8px;
       padding: 8px 14px;
       height: 65px;
@@ -308,11 +369,34 @@
       font-size: 0.8rem;
       color: #bdc3c7;
       margin-top: 8px;
-      border: 1px solid #1f343c;
+      border: 1px solid rgba(255,255,255,0.1);
     }
   </style>
 </head>
 <body>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal" style="display:none;">
+    <div class="modal-box">
+      <h2>⚙️ Casino Settings</h2>
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Table & Felt Theme</label>
+      <select id="themeSelector" onchange="applyTheme(this.value)">
+        <option value="classic-vegas">Classic Vegas Green</option>
+        <option value="midnight-blue">Midnight Velvet Blue</option>
+        <option value="crimson-vip">High Roller Crimson</option>
+        <option value="cyber-neon">Cyberpunk Neon</option>
+        <option value="golden-lounge">Golden VIP Lounge</option>
+      </select>
+
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
+      <select id="audioToggle" onchange="toggleAudio(this.value === 'true')">
+        <option value="true">Sound Effects: Enabled 🔊</option>
+        <option value="false">Sound Effects: Muted 🔇</option>
+      </select>
+
+      <button class="modal-btn" onclick="toggleSettingsModal(false)" style="margin-top:8px;">Save & Return to Table</button>
+    </div>
+  </div>
 
   <!-- Lobby Setup Modal -->
   <div class="modal-backdrop" id="lobbyModal">
@@ -351,6 +435,9 @@
 
   <header>
     <h1>7-CARD STUD POKER</h1>
+    <div class="header-btns">
+      <button class="icon-btn" onclick="toggleSettingsModal(true)">⚙️ Settings & Themes</button>
+    </div>
   </header>
 
   <!-- Felt Table -->
@@ -367,7 +454,7 @@
       </div>
     </div>
 
-    <!-- Seats -->
+    <!-- 4 Seats -->
     <div class="player-seat" id="seat-0">
       <div class="seat-header"><span class="seat-name" id="name-0">Empty</span><span class="seat-chips" id="chips-0">$0</span></div>
       <div class="seat-badge" id="badge-0">👑 Table Captain</div>
@@ -397,7 +484,7 @@
     </div>
   </div>
 
-  <!-- Actions -->
+  <!-- Action Controls -->
   <div class="control-dock">
     <div class="action-group-left">
       <button class="btn btn-fold" id="btnFold" onclick="sendAction('fold')" disabled>Fold</button>
@@ -423,9 +510,33 @@
   <div class="game-log" id="gameLog"><p>Connecting to Poker Server...</p></div>
 
 <script>
-  /* ================= AUDIO FX SYNTHESIZER ================= */
+  /* ================= THEMES & AUDIO ================= */
+  let soundEnabled = localStorage.getItem('stud_sound') !== 'false';
+  let savedTheme = localStorage.getItem('stud_theme') || CONFIG.DEFAULT_THEME || 'classic-vegas';
+
+  function applyTheme(themeName) {
+    document.body.setAttribute('data-theme', themeName);
+    localStorage.setItem('stud_theme', themeName);
+    document.getElementById('themeSelector').value = themeName;
+  }
+
+  function toggleAudio(enable) {
+    soundEnabled = enable;
+    localStorage.setItem('stud_sound', enable);
+    document.getElementById('audioToggle').value = enable ? 'true' : 'false';
+  }
+
+  function toggleSettingsModal(show) {
+    document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
+  }
+
+  // Initialize saved theme & audio preferences
+  applyTheme(savedTheme);
+  toggleAudio(soundEnabled);
+
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function playSound(type) {
+    if (!soundEnabled) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -456,10 +567,7 @@
   }
 
   /* ================= NETWORKING ================= */
-  // REPLACE THIS WITH YOUR RENDER URL:
-  const SERVER_URL = "https://poker-server-xxxx.onrender.com"; 
-
-  const socket = io(SERVER_URL);
+  const socket = io(CONFIG.SERVER_URL);
   let currentRoomId = '';
   let myPlayerName = '';
   let lastState = null;
@@ -492,7 +600,6 @@
     playSound('chip');
   }
 
-  /* River Choice Modal Event */
   socket.on('prompt_river_modal', () => {
     document.getElementById('riverModal').style.display = 'flex';
   });
@@ -503,9 +610,7 @@
     playSound('deal');
   }
 
-  socket.on('notification', (data) => {
-    log(data.text);
-  });
+  socket.on('notification', (data) => log(data.text));
 
   socket.on('game_state', (state) => {
     lastState = state;
@@ -515,7 +620,7 @@
     const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)', 8: 'Showdown' };
     document.getElementById('streetText').innerText = streetNames[state.currentStreet] || 'In Lobby';
 
-    // Update Wilds Window
+    // Wilds HUD
     const wildContainer = document.getElementById('wildCardsContainer');
     wildContainer.innerHTML = '';
     let wildRanks = [];
@@ -565,7 +670,6 @@
       });
     });
 
-    // Control buttons & turn handling
     const activePlayer = state.players[state.activeTurnIndex];
     const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded && state.currentStreet < 8;
 

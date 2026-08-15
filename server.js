@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,7 +9,10 @@ app.use(cors());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { 
+    origin: process.env.CORS_ORIGIN || '*', 
+    methods: ['GET', 'POST'] 
+  }
 });
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -183,7 +187,6 @@ io.on('connection', (socket) => {
     }
 
     if (room.pendingRiverChoices.size === 0) {
-      // Deal bots
       room.players.forEach(p => {
         if (p.isBot && !p.folded && p.cards.length === 6) {
           const botFaceUp = p.persona === 'aggressive' ? Math.random() < 0.65 : Math.random() < 0.25;
@@ -262,13 +265,12 @@ function triggerTurn(room) {
   }
 
   if (p.isBot) {
-    setTimeout(() => runBotTurn(room, p), 800);
+    setTimeout(() => runBotTurn(room, p), 850);
   } else {
     broadcastState(room.id);
   }
 }
 
-/* Upgraded AI Engine: Smart & Sticky */
 function runBotTurn(room, bot) {
   const toCall = room.highestBet - bot.currentBet;
   const minInc = room.currentStreet >= 5 ? 4 : 2;
@@ -303,7 +305,6 @@ function runBotTurn(room, bot) {
       }
     }
   } else {
-    // Wild Chaser
     if (wildCount > 0 || hand.score >= 300) {
       action = (Math.random() < 0.7) ? 'raise' : 'check';
       raiseAmt = Math.min(bot.chips, toCall + minInc + (wildCount * 2));
@@ -368,7 +369,6 @@ function advanceStreet(room) {
     room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
     startStreetBetting(room, room.currentStreet);
   } else if (room.currentStreet === 6) {
-    // 7th street (River)
     const humans = room.players.filter(p => !p.isBot && !p.folded);
     room.pendingRiverChoices = new Set(humans.map(p => p.id));
     if (room.pendingRiverChoices.size === 0) {
@@ -461,5 +461,5 @@ function broadcastState(roomId, message = null) {
   });
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`));
