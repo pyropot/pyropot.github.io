@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>7-Card Stud Poker - Custom Wilds & Personalities</title>
+  <title>7-Card Stud Multiplayer</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -15,41 +16,51 @@
       min-height: 100vh;
       padding: 12px;
     }
+    header { text-align: center; margin-bottom: 8px; }
+    h1 { font-size: 1.7rem; color: #f1c40f; }
 
-    header {
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    h1 { font-size: 1.7rem; color: #f1c40f; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
-
-    /* Settings Bar */
-    .settings-bar {
+    /* Lobby Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      background: #162428;
-      padding: 8px 18px;
-      border-radius: 10px;
+      justify-content: center;
       align-items: center;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      z-index: 100;
     }
-    .settings-bar label { font-size: 0.9rem; font-weight: bold; color: #ddd; }
-    .settings-bar select, .settings-bar button {
-      padding: 6px 12px;
+    .lobby-card {
+      background: #162428;
+      border: 2px solid #f1c40f;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .lobby-card input, .lobby-card select, .lobby-card button {
+      padding: 10px;
       border-radius: 6px;
       border: 1px solid #3b535d;
       background: #243b44;
       color: #fff;
+      font-size: 1rem;
+    }
+    .lobby-card button {
+      background: #2ecc71;
+      font-weight: bold;
       cursor: pointer;
+      border: none;
     }
 
-    /* Poker Table */
+    /* Table & HUD */
     .table {
       position: relative;
       width: 96vw;
       max-width: 1000px;
-      height: 600px;
+      height: 580px;
       background: radial-gradient(circle, #27ae60 0%, #196f3d 75%, #0d381e 100%);
       border: 14px solid #4a2d16;
       border-radius: 220px;
@@ -59,872 +70,209 @@
       align-items: center;
       margin-bottom: 12px;
     }
-
-    /* Center Table Info */
-    .center-hud {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      z-index: 5;
-    }
-
+    .center-hud { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 5; }
     .pot-display {
-      text-align: center;
-      background: rgba(0, 0, 0, 0.65);
-      padding: 8px 20px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.2);
+      text-align: center; background: rgba(0,0,0,0.65); padding: 6px 18px; border-radius: 14px;
     }
-    .pot-title { font-size: 0.75rem; color: #aaa; text-transform: uppercase; }
-    .pot-amount { font-size: 1.5rem; color: #f1c40f; font-weight: bold; }
-    .round-indicator { font-size: 0.8rem; color: #00d2d3; font-weight: 600; }
+    .pot-amount { font-size: 1.4rem; color: #f1c40f; font-weight: bold; }
 
-    /* Active Wilds Showcase Box */
+    /* Compact Wild Cards */
     .wild-window {
-      background: rgba(18, 30, 36, 0.9);
-      border: 2px solid #f39c12;
-      border-radius: 10px;
-      padding: 6px 12px;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      background: rgba(18, 30, 36, 0.92); border: 2px solid #f39c12; border-radius: 10px;
+      padding: 4px 10px; text-align: center;
     }
-    .wild-window-title {
-      font-size: 0.75rem;
-      color: #f1c40f;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin-bottom: 4px;
+    .compact-wild-card {
+      background: #fff; color: #111; border-radius: 4px; padding: 2px 6px;
+      display: inline-flex; flex-direction: column; align-items: center; font-weight: bold;
     }
-    .wild-cards-list {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-      min-height: 28px;
-      align-items: center;
-    }
-    .mini-wild-card {
-      background: #fff;
-      color: #111;
-      border-radius: 3px;
-      padding: 2px 5px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-    }
-    .mini-wild-card.red { color: #e74c3c; }
+    .compact-wild-suits { font-size: 0.7rem; display: flex; gap: 2px; }
+    .suit-b { color: #111; } .suit-r { color: #e74c3c; }
 
     /* Player Seats */
     .player-seat {
-      position: absolute;
-      background: rgba(15, 25, 30, 0.9);
-      border-radius: 12px;
-      padding: 8px 12px;
-      min-width: 180px;
-      border: 2px solid transparent;
-      transition: all 0.3s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      position: absolute; background: rgba(15, 25, 30, 0.9); border-radius: 10px;
+      padding: 8px 12px; min-width: 170px; border: 2px solid transparent;
     }
-    .player-seat.active-turn {
-      border-color: #f1c40f;
-      box-shadow: 0 0 15px #f1c40f;
-    }
-    .player-seat.folded {
-      opacity: 0.4;
-      filter: grayscale(0.8);
-    }
+    .player-seat.active-turn { border-color: #f1c40f; box-shadow: 0 0 15px #f1c40f; }
+    .player-seat.folded { opacity: 0.35; }
+    #seat-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }
+    #seat-1 { left: 15px; top: 44%; transform: translateY(-50%); }
+    #seat-2 { top: 12px; left: 50%; transform: translateX(-50%); }
+    #seat-3 { right: 15px; top: 44%; transform: translateY(-50%); }
 
-    #seat-bot2 { top: 12px; left: 50%; transform: translateX(-50%); } /* Top */
-    #seat-bot1 { left: 15px; top: 44%; transform: translateY(-50%); }  /* Left */
-    #seat-bot3 { right: 15px; top: 44%; transform: translateY(-50%); } /* Right */
-    #seat-user { bottom: 12px; left: 50%; transform: translateX(-50%); } /* Bottom */
-
-    .player-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .player-name { font-size: 0.85rem; font-weight: bold; }
-    .player-chips { font-size: 0.85rem; color: #2ecc71; font-weight: bold; }
-    .persona-badge {
-      font-size: 0.68rem;
-      color: #f39c12;
-      margin-bottom: 4px;
-    }
-    .player-status { font-size: 0.75rem; color: #3498db; min-height: 15px; }
-
-    /* Card Elements */
-    .cards-row {
-      display: flex;
-      gap: 4px;
-      margin-top: 4px;
-      min-height: 48px;
-    }
+    .cards-row { display: flex; gap: 4px; margin-top: 4px; min-height: 46px; }
     .card {
-      width: 32px;
-      height: 46px;
-      background: #fff;
-      border-radius: 4px;
-      color: #111;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.72rem;
-      font-weight: bold;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-      position: relative;
+      width: 32px; height: 46px; background: #fff; border-radius: 4px; color: #111;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: bold; position: relative;
     }
     .card.red { color: #e74c3c; }
-    .card.back {
-      background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 5px, #34495e 5px, #34495e 10px);
-      border: 1px solid #1a252f;
-      color: transparent;
-    }
-    .card.is-wild::after {
-      content: '?';
-      position: absolute;
-      top: -5px;
-      right: -2px;
-      color: #e67e22;
-      font-size: 11px;
-    }
+    .card.back { background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 5px, #34495e 5px, #34495e 10px); color: transparent; }
+    .card.is-wild::after { content: '★'; position: absolute; top: -5px; right: -2px; color: #e67e22; }
 
-    /* Player Action Panel */
+    /* Controls */
     .control-dock {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      background: #162428;
-      padding: 12px 20px;
-      border-radius: 12px;
-      align-items: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      width: 96vw;
-      max-width: 1000px;
+      display: flex; gap: 10px; background: #162428; padding: 10px 18px; border-radius: 10px; align-items: center;
     }
-    .action-row-main {
-      display: flex;
-      gap: 12px;
-      width: 100%;
-      justify-content: center;
-      align-items: center;
-    }
-    .bet-slider-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: #20353c;
-      padding: 6px 14px;
-      border-radius: 8px;
-    }
-    .bet-slider-group input[type="range"] {
-      width: 130px;
-      cursor: pointer;
-    }
-    .bet-presets {
-      display: flex;
-      gap: 6px;
-    }
-    .preset-btn {
-      background: #2c4752;
-      border: 1px solid #4a6c7a;
-      color: #eee;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
-    .preset-btn:hover { background: #395c6b; }
-
-    .btn {
-      padding: 10px 18px;
-      font-size: 0.95rem;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
     .btn-fold { background: #e74c3c; color: #fff; }
     .btn-check { background: #3498db; color: #fff; }
     .btn-raise { background: #2ecc71; color: #fff; }
-    .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* Log Box */
+    /* Log */
     .game-log {
-      width: 96vw;
-      max-width: 1000px;
-      background: #101c1f;
-      border-radius: 8px;
-      padding: 8px 15px;
-      height: 75px;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: #bdc3c7;
-      margin-top: 10px;
-      border: 1px solid #1f343c;
+      width: 96vw; max-width: 1000px; background: #101c1f; border-radius: 8px;
+      padding: 6px 12px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #aaa; margin-top: 8px;
     }
-    .game-log p { margin-bottom: 2px; }
   </style>
 </head>
 <body>
 
+  <!-- Lobby Screen Modal -->
+  <div class="modal-overlay" id="lobbyModal">
+    <div class="lobby-card">
+      <h2 style="color:#f1c40f; text-align:center;">Multiplayer Stud</h2>
+      <input type="text" id="playerNameInput" placeholder="Your Name" value="Player">
+      <input type="text" id="roomIdInput" placeholder="Room Code (e.g. room1)" value="room1">
+      <select id="ruleVariantInput">
+        <option value="standard">Standard Rules</option>
+        <option value="deuces">Deuces Wild (2s Wild)</option>
+        <option value="follow">Follow the Queen</option>
+      </select>
+      <button onclick="joinRoom()">Join / Create Room</button>
+    </div>
+  </div>
+
   <header>
-    <h1>7-Card Stud Poker</h1>
+    <h1>7-Card Stud Multiplayer</h1>
   </header>
 
-  <!-- Rules Bar -->
-  <div class="settings-bar">
-    <div>
-      <label>Variant: </label>
-      <select id="ruleSelect" onchange="changeRuleVariant()">
-        <option value="standard">Standard Rules (No Wilds)</option>
-        <option value="deuces">Deuces Wild (2s are Wild)</option>
-        <option value="follow">Follow the Queen (Queens & Next Up-Card Wild)</option>
-      </select>
-    </div>
-    <button onclick="startNewHand()" id="dealBtn">Start New Hand</button>
-  </div>
-
-  <!-- Poker Table -->
+  <!-- Table View -->
   <div class="table">
-    <!-- Center Info + Active Wilds Window -->
     <div class="center-hud">
       <div class="pot-display">
-        <div class="pot-title">Current Pot</div>
         <div class="pot-amount" id="potText">$0</div>
-        <div class="round-indicator" id="streetText">Click 'Start New Hand'</div>
+        <div style="font-size:0.75rem; color:#00d2d3;" id="streetText">Waiting to Start</div>
       </div>
-
-      <!-- Dedicated Wild Cards Window -->
-      <div class="wild-window" id="wildWindow">
-        <div class="wild-window-title">? Active Wild Cards ?</div>
-        <div class="wild-cards-list" id="wildCardsList">
-          <span style="font-size: 0.75rem; color:#888;">None</span>
-        </div>
+      <div class="wild-window">
+        <div style="font-size:0.65rem; color:#f1c40f; font-weight:bold;">WILD CARDS</div>
+        <div id="wildCardsList" style="display:flex; gap:6px; justify-content:center;">None</div>
       </div>
+      <button id="startHandBtn" onclick="startHand()" style="padding:6px 12px; background:#f1c40f; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">Start Hand (+Bots)</button>
     </div>
 
-    <!-- Bot 2: Aggressive Maniac (Top) -->
-    <div class="player-seat" id="seat-bot2">
-      <div class="player-header">
-        <span class="player-name">Alex</span>
-        <span class="player-chips" id="chips-bot2">$100</span>
-      </div>
-      <div class="persona-badge">? Aggressive Bluffer</div>
-      <div class="player-status" id="status-bot2"></div>
-      <div class="cards-row" id="cards-bot2"></div>
-    </div>
-
-    <!-- Bot 1: Calling Station (Left) -->
-    <div class="player-seat" id="seat-bot1">
-      <div class="player-header">
-        <span class="player-name">Sam</span>
-        <span class="player-chips" id="chips-bot1">$100</span>
-      </div>
-      <div class="persona-badge">??? Calling Station</div>
-      <div class="player-status" id="status-bot1"></div>
-      <div class="cards-row" id="cards-bot1"></div>
-    </div>
-
-    <!-- Bot 3: Wild Chaser (Right) -->
-    <div class="player-seat" id="seat-bot3">
-      <div class="player-header">
-        <span class="player-name">Jordan</span>
-        <span class="player-chips" id="chips-bot3">$100</span>
-      </div>
-      <div class="persona-badge">?? Wild Card Gambler</div>
-      <div class="player-status" id="status-bot3"></div>
-      <div class="cards-row" id="cards-bot3"></div>
-    </div>
-
-    <!-- Hero / Player (Bottom) -->
-    <div class="player-seat" id="seat-user">
-      <div class="player-header">
-        <span class="player-name">You (Hero)</span>
-        <span class="player-chips" id="chips-user">$100</span>
-      </div>
-      <div class="persona-badge">?? Table Captain</div>
-      <div class="player-status" id="status-user"></div>
-      <div class="cards-row" id="cards-user"></div>
-    </div>
+    <!-- 4 Player Seats -->
+    <div class="player-seat" id="seat-0"><div class="player-name" id="name-0">Empty</div><div id="chips-0">$0</div><div id="status-0" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-0"></div></div>
+    <div class="player-seat" id="seat-1"><div class="player-name" id="name-1">Empty</div><div id="chips-1">$0</div><div id="status-1" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-1"></div></div>
+    <div class="player-seat" id="seat-2"><div class="player-name" id="name-2">Empty</div><div id="chips-2">$0</div><div id="status-2" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-2"></div></div>
+    <div class="player-seat" id="seat-3"><div class="player-name" id="name-3">Empty</div><div id="chips-3">$0</div><div id="status-3" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-3"></div></div>
   </div>
 
-  <!-- Player Action Dock -->
+  <!-- Actions -->
   <div class="control-dock">
-    <div class="action-row-main">
-      <button class="btn btn-fold" id="btnFold" onclick="playerAction('fold')" disabled>Fold</button>
-      <button class="btn btn-check" id="btnCheck" onclick="playerAction('check')" disabled>Check</button>
-
-      <!-- Variable Bet Slider Group -->
-      <div class="bet-slider-group">
-        <span style="font-size: 0.85rem; font-weight: bold;">Bet:</span>
-        <input type="range" id="raiseSlider" min="2" max="100" value="2" oninput="syncRaiseInput(this.value)" disabled>
-        <span id="raiseAmountText" style="font-size: 0.9rem; font-weight: bold; color: #2ecc71; min-width: 40px;">$2</span>
-        <div class="bet-presets">
-          <button class="preset-btn" onclick="setPreset('min')">Min</button>
-          <button class="preset-btn" onclick="setPreset('2x')">2x</button>
-          <button class="preset-btn" onclick="setPreset('pot')">Pot</button>
-          <button class="preset-btn" onclick="setPreset('max')">Max</button>
-        </div>
-      </div>
-
-      <button class="btn btn-raise" id="btnRaise" onclick="playerAction('raise')" disabled>Bet $2</button>
-    </div>
+    <button class="btn btn-fold" id="btnFold" onclick="sendAction('fold')" disabled>Fold</button>
+    <button class="btn btn-check" id="btnCheck" onclick="sendAction('check')" disabled>Check</button>
+    <button class="btn btn-raise" id="btnRaise" onclick="sendAction('raise')" disabled>Bet $2</button>
   </div>
 
-  <!-- Activity Log -->
-  <div class="game-log" id="gameLog">
-    <p>Welcome! Choose your house rule and hit 'Start New Hand'.</p>
-  </div>
+  <div class="game-log" id="gameLog"><p>Connecting...</p></div>
 
 <script>
-/* ================= GAME STATE & CONFIG ================= */
-const SUITS = ['?', '?', '?', '?'];
-const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
+  const SERVER_URL = "https://pyropot-github-io.onrender.com/"; 
 
-const ANTE = 1;
+  const socket = io(SERVER_URL);
+  let currentRoomId = '';
+  let myPlayerName = '';
 
-let deck = [];
-let players = [
-  { id: 'user', name: 'You', chips: 100, cards: [], folded: false, currentBet: 0, isBot: false, persona: 'hero' },
-  { id: 'bot1', name: 'Sam', chips: 100, cards: [], folded: false, currentBet: 0, isBot: true, persona: 'calling_station' },
-  { id: 'bot2', name: 'Alex', chips: 100, cards: [], folded: false, currentBet: 0, isBot: true, persona: 'aggressive' },
-  { id: 'bot3', name: 'Jordan', chips: 100, cards: [], folded: false, currentBet: 0, isBot: true, persona: 'wild_chaser' }
-];
-
-let pot = 0;
-let currentStreet = 0;
-let activeTurnIndex = 0;
-let highestBet = 0;
-let lastRaiserIndex = -1;
-let ruleVariant = 'standard';
-let followRank = null;
-let awaitingNextQueenFollower = false;
-
-/* ================= LOG & UTILITY ================= */
-function log(msg) {
-  const logBox = document.getElementById('gameLog');
-  const p = document.createElement('p');
-  p.innerHTML = msg;
-  logBox.prepend(p);
-}
-
-function changeRuleVariant() {
-  ruleVariant = document.getElementById('ruleSelect').value;
-  updateWildCardsWindow();
-}
-
-function updateWildCardsWindow() {
-  const list = document.getElementById('wildCardsList');
-  list.innerHTML = '';
-
-  let wildRanks = [];
-  if (ruleVariant === 'deuces') {
-    wildRanks = ['2'];
-  } else if (ruleVariant === 'follow') {
-    wildRanks.push('Q');
-    if (followRank && !wildRanks.includes(followRank)) {
-      wildRanks.push(followRank);
-    }
+  function log(msg) {
+    const logBox = document.getElementById('gameLog');
+    const p = document.createElement('p');
+    p.innerHTML = msg;
+    logBox.prepend(p);
   }
 
-  if (wildRanks.length === 0) {
-    list.innerHTML = `<span style="font-size: 0.75rem; color:#888;">None</span>`;
-    return;
+  function joinRoom() {
+    myPlayerName = document.getElementById('playerNameInput').value || 'Hero';
+    currentRoomId = document.getElementById('roomIdInput').value || 'room1';
+    const rule = document.getElementById('ruleVariantInput').value;
+
+    socket.emit('join_room', { roomId: currentRoomId, playerName: myPlayerName, ruleVariant: rule });
+    document.getElementById('lobbyModal').style.display = 'none';
+    log(`Joined Room: <b>${currentRoomId}</b> as <b>${myPlayerName}</b>`);
   }
 
-  wildRanks.forEach(r => {
-    SUITS.forEach(s => {
-      const isRed = s === '?' || s === '?';
-      const mini = document.createElement('div');
-      mini.className = `mini-wild-card ${isRed ? 'red' : ''}`;
-      mini.innerHTML = `${r}${s}`;
-      list.appendChild(mini);
-    });
+  function startHand() {
+    socket.emit('start_hand', { roomId: currentRoomId, fillBots: true });
+  }
+
+  function sendAction(action) {
+    socket.emit('take_action', { roomId: currentRoomId, action, raiseAmt: 4 });
+  }
+
+  socket.on('prompt_river_choice', () => {
+    const choice = confirm("7th Street: Click OK for Face-Up 👁️, or Cancel for Face-Down 🔒");
+    socket.emit('river_choice', { roomId: currentRoomId, faceUp: choice });
   });
 
-  if (ruleVariant === 'follow' && awaitingNextQueenFollower) {
-    const hint = document.createElement('span');
-    hint.style.fontSize = '0.7rem';
-    hint.style.color = '#f1c40f';
-    hint.style.marginLeft = '4px';
-    hint.innerText = '(+ next face up card)';
-    list.appendChild(hint);
-  }
-}
-
-function isCardWild(card) {
-  if (ruleVariant === 'deuces' && card.rank === '2') return true;
-  if (ruleVariant === 'follow') {
-    if (card.rank === 'Q') return true;
-    if (followRank && card.rank === followRank) return true;
-  }
-  return false;
-}
-
-function createDeck() {
-  deck = [];
-  for (let s of SUITS) {
-    for (let r of RANKS) {
-      deck.push({ rank: r, suit: s, value: RANK_VALUES[r], isFaceUp: false });
-    }
-  }
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-}
-
-/* ================= GAME FLOW ================= */
-function startNewHand() {
-  pot = 0;
-  followRank = null;
-  awaitingNextQueenFollower = false;
-  currentStreet = 3;
-  updateWildCardsWindow();
-
-  players.forEach(p => {
-    p.cards = [];
-    p.folded = p.chips < ANTE;
-    p.currentBet = 0;
-    document.getElementById(`status-${p.id}`).innerText = '';
-  });
-
-  players.forEach(p => {
-    if (!p.folded) {
-      p.chips -= ANTE;
-      pot += ANTE;
-    }
-  });
-
-  log(`--- <b>New Hand Started</b> (Ante $${ANTE}) ---`);
-  createDeck();
-
-  // Deal 3rd Street: 2 face-down, 1 face-up
-  for (let i = 0; i < 2; i++) {
-    players.forEach(p => { if (!p.folded) dealCardTo(p, false); });
-  }
-  players.forEach(p => { if (!p.folded) dealCardTo(p, true); });
-
-  updateUI();
-  startBettingRound(3);
-}
-
-function dealCardTo(player, isFaceUp) {
-  const card = deck.pop();
-  card.isFaceUp = isFaceUp;
-  player.cards.push(card);
-
-  if (ruleVariant === 'follow' && isFaceUp) {
-    if (awaitingNextQueenFollower) {
-      followRank = card.rank;
-      awaitingNextQueenFollower = false;
-      log(`?? Queen followed by a <b>${card.rank}</b>! Queens & ${card.rank}s are now WILD!`);
-      updateWildCardsWindow();
-    } else if (card.rank === 'Q') {
-      awaitingNextQueenFollower = true;
-      log(`?? Face-up Queen dealt! The next face-up card sets the 2nd wild card rank!`);
-      updateWildCardsWindow();
-    }
-  }
-}
-
-function startBettingRound(street) {
-  currentStreet = street;
-  highestBet = 0;
-  players.forEach(p => p.currentBet = 0);
-
-  const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)' };
-  document.getElementById('streetText').innerText = streetNames[street];
-  log(`<b>-- ${streetNames[street]} --</b>`);
-
-  activeTurnIndex = getHighestUpcardPlayerIndex();
-  lastRaiserIndex = activeTurnIndex;
-
-  updateUI();
-  processTurn();
-}
-
-function getHighestUpcardPlayerIndex() {
-  let highestIndex = 0;
-  let highestVal = -1;
-  players.forEach((p, idx) => {
-    if (!p.folded) {
-      const upCards = p.cards.filter(c => c.isFaceUp);
-      const topVal = upCards.length ? Math.max(...upCards.map(c => isCardWild(c) ? 99 : c.value)) : 0;
-      if (topVal > highestVal) {
-        highestVal = topVal;
-        highestIndex = idx;
-      }
-    }
-  });
-  return highestIndex;
-}
-
-function processTurn() {
-  const activePlayers = players.filter(p => !p.folded);
-  if (activePlayers.length === 1) {
-    endHand(activePlayers[0]);
-    return;
-  }
-
-  const p = players[activeTurnIndex];
-  if (p.folded) {
-    advanceTurn();
-    return;
-  }
-
-  highlightActiveSeat();
-
-  if (p.isBot) {
-    disablePlayerButtons();
-    setTimeout(() => botAction(p), 850);
-  } else {
-    enablePlayerButtons();
-  }
-}
-
-function advanceTurn() {
-  let count = 0;
-  do {
-    activeTurnIndex = (activeTurnIndex + 1) % players.length;
-    count++;
-  } while (players[activeTurnIndex].folded && count < players.length);
-
-  const activePlayers = players.filter(p => !p.folded);
-  const allMatched = activePlayers.every(p => p.currentBet === highestBet);
-
-  if (allMatched && (activeTurnIndex === lastRaiserIndex || (highestBet === 0 && count >= players.length))) {
-    nextStreet();
-  } else {
-    processTurn();
-  }
-}
-
-function nextStreet() {
-  if (currentStreet < 6) {
-    currentStreet++;
-    players.forEach(p => { if (!p.folded) dealCardTo(p, true); });
-    startBettingRound(currentStreet);
-  } else if (currentStreet === 6) {
-    currentStreet = 7;
-    players.forEach(p => { if (!p.folded) dealCardTo(p, false); });
-    startBettingRound(7);
-  } else {
-    showdown();
-  }
-}
-
-/* ================= BOT PERSONALITIES & ACTIONS ================= */
-function botAction(bot) {
-  const toCall = highestBet - bot.currentBet;
-  const wildCount = bot.cards.filter(c => isCardWild(c)).length;
-  const handEval = evaluate7CardHand(bot.cards);
-  const minRaise = getMinRaise();
-
-  let action = 'check';
-  let raiseAmount = minRaise;
-
-  // Bot 1: Calling Station ("Sam") - Almost NEVER folds (5% max fold on huge river bets)
-  if (bot.persona === 'calling_station') {
-    if (toCall === 0) {
-      if (Math.random() < 0.15 && handEval.score >= 300) {
-        action = 'raise';
-        raiseAmount = minRaise;
-      } else {
-        action = 'check';
-      }
-    } else {
-      if (toCall > bot.chips) {
-        action = 'check'; // All-in call
-      } else if (currentStreet === 7 && handEval.score < 200 && Math.random() < 0.08) {
-        action = 'fold'; // rare river surrender
-      } else {
-        action = 'check'; // Calls happily
-      }
-    }
-  }
-
-  // Bot 2: Aggressive Maniac ("Alex") - Constantly raises and bluffs
-  else if (bot.persona === 'aggressive') {
-    if (toCall === 0) {
-      if (Math.random() < 0.65) {
-        action = 'raise';
-        raiseAmount = Math.min(bot.chips, minRaise + Math.floor(Math.random() * 4) * 2);
-      } else {
-        action = 'check';
-      }
-    } else {
-      if (Math.random() < 0.45) {
-        action = 'raise';
-        raiseAmount = Math.min(bot.chips, toCall + minRaise + 2);
-      } else if (Math.random() < 0.92) {
-        action = 'check'; // Call
-      } else {
-        action = 'fold';
-      }
-    }
-  }
-
-  // Bot 3: Wild Chaser ("Jordan") - Bets aggressively if holding wildcards, rarely folds early
-  else if (bot.persona === 'wild_chaser') {
-    if (wildCount > 0 || handEval.score >= 300) {
-      if (Math.random() < 0.70) {
-        action = 'raise';
-        raiseAmount = Math.min(bot.chips, toCall + minRaise + (wildCount * 2));
-      } else {
-        action = 'check';
-      }
-    } else {
-      // No wilds yet: float along hoping to hit one
-      if (toCall === 0) {
-        action = (Math.random() < 0.25) ? 'raise' : 'check';
-      } else {
-        action = (currentStreet <= 5 || Math.random() < 0.88) ? 'check' : 'fold';
-      }
-    }
-  }
-
-  executeAction(bot, action, raiseAmount);
-}
-
-function executeAction(player, action, customRaiseAmt = 0) {
-  const toCall = highestBet - player.currentBet;
-
-  if (action === 'fold') {
-    player.folded = true;
-    document.getElementById(`status-${player.id}`).innerText = 'Folded';
-    log(`${player.name} folds.`);
-  } else if (action === 'check') {
-    if (toCall > 0) {
-      const callAmt = Math.min(toCall, player.chips);
-      player.chips -= callAmt;
-      player.currentBet += callAmt;
-      pot += callAmt;
-      document.getElementById(`status-${player.id}`).innerText = `Calls $${callAmt}`;
-      log(`${player.name} calls $${callAmt}.`);
-    } else {
-      document.getElementById(`status-${player.id}`).innerText = 'Checks';
-      log(`${player.name} checks.`);
-    }
-  } else if (action === 'raise') {
-    const raiseVal = customRaiseAmt || getRaiseSliderValue();
-    const actualAdd = Math.min(raiseVal, player.chips);
-    player.chips -= actualAdd;
-    player.currentBet += actualAdd;
-    highestBet = player.currentBet;
-    lastRaiserIndex = activeTurnIndex;
-    pot += actualAdd;
-    document.getElementById(`status-${player.id}`).innerText = `Bets/Raises $${actualAdd}`;
-    log(`?? <b>${player.name}</b> raises to $${highestBet} (added $${actualAdd})`);
-  }
-
-  updateUI();
-  advanceTurn();
-}
-
-/* ================= SLIDER & VARIABLE RAISING ================= */
-function getMinRaise() {
-  return (currentStreet >= 5) ? 4 : 2;
-}
-
-function getRaiseSliderValue() {
-  return parseInt(document.getElementById('raiseSlider').value, 10);
-}
-
-function syncRaiseInput(val) {
-  document.getElementById('raiseAmountText').innerText = `$${val}`;
-  document.getElementById('btnRaise').innerText = `Bet/Raise $${val}`;
-}
-
-function setPreset(preset) {
-  const p = players[0];
-  const toCall = highestBet - p.currentBet;
-  const minInc = getMinRaise();
-  const minLegal = toCall + minInc;
-  const slider = document.getElementById('raiseSlider');
-
-  let target = minLegal;
-  if (preset === 'min') target = minLegal;
-  if (preset === '2x') target = minLegal * 2;
-  if (preset === 'pot') target = Math.max(minLegal, pot);
-  if (preset === 'max') target = p.chips;
-
-  target = Math.min(p.chips, Math.max(minLegal, target));
-  slider.value = target;
-  syncRaiseInput(target);
-}
-
-function configureSliderBounds() {
-  const p = players[0];
-  const toCall = highestBet - p.currentBet;
-  const minLegal = Math.min(p.chips, toCall + getMinRaise());
-  const slider = document.getElementById('raiseSlider');
-
-  slider.min = minLegal;
-  slider.max = p.chips;
-  slider.value = minLegal;
-  syncRaiseInput(minLegal);
-}
-
-/* ================= SHOWDOWN & EVALUATOR ================= */
-function showdown() {
-  log(`<b>=== SHOWDOWN ===</b>`);
-  players.forEach(p => {
-    if (!p.folded) p.cards.forEach(c => c.isFaceUp = true);
-  });
-  updateUI();
-
-  let winners = [];
-  let bestScore = -1;
-  let bestDesc = '';
-
-  players.forEach(p => {
-    if (!p.folded) {
-      const result = evaluate7CardHand(p.cards);
-      log(`${p.name} shows: <b>${result.desc}</b>`);
-      document.getElementById(`status-${p.id}`).innerText = result.desc;
-      if (result.score > bestScore) {
-        bestScore = result.score;
-        bestDesc = result.desc;
-        winners = [p];
-      } else if (result.score === bestScore) {
-        winners.push(p);
-      }
-    }
-  });
-
-  const splitPot = Math.floor(pot / winners.length);
-  winners.forEach(w => {
-    w.chips += splitPot;
-    log(`?? <b>${w.name}</b> wins $${splitPot} with ${bestDesc}!`);
-  });
-
-  pot = 0;
-  updateUI();
-  document.getElementById('streetText').innerText = 'Hand Complete!';
-  disablePlayerButtons();
-}
-
-function endHand(winner) {
-  winner.chips += pot;
-  log(`?? <b>${winner.name}</b> wins $${pot} (Everyone else folded).`);
-  pot = 0;
-  updateUI();
-  document.getElementById('streetText').innerText = 'Hand Complete!';
-  disablePlayerButtons();
-}
-
-function evaluate7CardHand(cards) {
-  const wildCount = cards.filter(c => isCardWild(c)).length;
-  const naturalCards = cards.filter(c => !isCardWild(c));
-
-  const rankCounts = {};
-  naturalCards.forEach(c => rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1);
-  const counts = Object.values(rankCounts).sort((a,b) => b - a);
-  const topCount = counts[0] || 0;
-  const effectiveSameKind = topCount + wildCount;
-
-  if (effectiveSameKind >= 5) return { score: 1000, desc: '5 of a Kind' };
-  if (effectiveSameKind >= 4) return { score: 800, desc: '4 of a Kind' };
-  if ((topCount >= 3 && counts[1] >= 2) || (topCount === 2 && counts[1] === 2 && wildCount >= 1) || (topCount >= 3 && wildCount >= 1)) {
-    return { score: 700, desc: 'Full House' };
-  }
-  const suitCounts = {};
-  naturalCards.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1);
-  const maxSuit = Math.max(...Object.values(suitCounts), 0);
-  if (maxSuit + wildCount >= 5) return { score: 600, desc: 'Flush' };
-  if (effectiveSameKind >= 3) return { score: 400, desc: '3 of a Kind' };
-  if (counts[0] >= 2 && counts[1] >= 2) return { score: 300, desc: 'Two Pair' };
-  if (effectiveSameKind >= 2) return { score: 200, desc: 'One Pair' };
-
-  const highest = Math.max(...cards.map(c => c.value));
-  return { score: 100 + highest, desc: 'High Card' };
-}
-
-/* ================= UI UPDATES ================= */
-function updateUI() {
-  document.getElementById('potText').innerText = `$${pot}`;
-
-  players.forEach(p => {
-    document.getElementById(`chips-${p.id}`).innerText = `$${p.chips}`;
-    const seatEl = document.getElementById(`seat-${p.id}`);
+  socket.on('game_state', (state) => {
+    document.getElementById('potText').innerText = `$${state.pot}`;
     
-    if (p.folded) {
-      seatEl.classList.add('folded');
-    } else {
-      seatEl.classList.remove('folded');
+    // Update Wilds Window
+    const wildList = document.getElementById('wildCardsList');
+    wildList.innerHTML = '';
+    let wildRanks = [];
+    if (state.ruleVariant === 'deuces') wildRanks = ['2'];
+    if (state.ruleVariant === 'follow') {
+      wildRanks.push('Q');
+      if (state.followRank) wildRanks.push(state.followRank);
+    }
+    if (wildRanks.length === 0) wildList.innerText = 'None';
+    else {
+      wildRanks.forEach(r => {
+        const c = document.createElement('div');
+        c.className = 'compact-wild-card';
+        c.innerHTML = `<div>${r}</div><div class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></div>`;
+        wildList.appendChild(c);
+      });
     }
 
-    const cardContainer = document.getElementById(`cards-${p.id}`);
-    cardContainer.innerHTML = '';
-
-    p.cards.forEach(card => {
-      const cardEl = document.createElement('div');
-      const wild = isCardWild(card);
+    // Render Players
+    state.players.forEach((p, idx) => {
+      document.getElementById(`name-${idx}`).innerText = p.name;
+      document.getElementById(`chips-${idx}`).innerText = `$${p.chips}`;
+      document.getElementById(`status-${idx}`).innerText = p.handDesc || (p.folded ? 'Folded' : '');
       
-      if (card.isFaceUp || p.id === 'user') {
-        const isRed = card.suit === '?' || card.suit === '?';
-        cardEl.className = `card ${isRed ? 'red' : ''} ${wild ? 'is-wild' : ''}`;
-        cardEl.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
-        if (!card.isFaceUp && p.id === 'user') {
-          cardEl.style.border = '1px dashed #f39c12';
+      const seat = document.getElementById(`seat-${idx}`);
+      if (idx === state.activeTurnIndex) seat.classList.add('active-turn');
+      else seat.classList.remove('active-turn');
+
+      const cardBox = document.getElementById(`cards-${idx}`);
+      cardBox.innerHTML = '';
+      p.cards.forEach(card => {
+        const el = document.createElement('div');
+        if (card.rank) {
+          const isRed = card.suit === '♥' || card.suit === '♦';
+          const wild = (state.ruleVariant === 'deuces' && card.rank === '2') || (state.ruleVariant === 'follow' && (card.rank === 'Q' || card.rank === state.followRank));
+          el.className = `card ${isRed ? 'red' : ''} ${wild ? 'is-wild' : ''}`;
+          el.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+        } else {
+          el.className = 'card back';
         }
-      } else {
-        cardEl.className = 'card back';
-      }
-      cardContainer.appendChild(cardEl);
+        cardBox.appendChild(el);
+      });
     });
+
+    // Toggle Buttons if it's my turn
+    const activePlayer = state.players[state.activeTurnIndex];
+    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded;
+
+    document.getElementById('btnFold').disabled = !isMyTurn;
+    document.getElementById('btnCheck').disabled = !isMyTurn;
+    document.getElementById('btnRaise').disabled = !isMyTurn;
+
+    if (state.message) log(state.message);
   });
-}
-
-function highlightActiveSeat() {
-  players.forEach((p, idx) => {
-    const seatEl = document.getElementById(`seat-${p.id}`);
-    if (idx === activeTurnIndex) {
-      seatEl.classList.add('active-turn');
-    } else {
-      seatEl.classList.remove('active-turn');
-    }
-  });
-}
-
-function playerAction(type) {
-  const p = players[0];
-  if (type === 'raise') {
-    executeAction(p, 'raise', getRaiseSliderValue());
-  } else {
-    executeAction(p, type);
-  }
-}
-
-function enablePlayerButtons() {
-  const p = players[0];
-  const toCall = highestBet - p.currentBet;
-
-  document.getElementById('btnFold').disabled = false;
-  document.getElementById('btnCheck').disabled = false;
-  document.getElementById('btnCheck').innerText = toCall > 0 ? `Call $${toCall}` : 'Check';
-
-  document.getElementById('btnRaise').disabled = p.chips <= toCall;
-  document.getElementById('raiseSlider').disabled = p.chips <= toCall;
-  configureSliderBounds();
-}
-
-function disablePlayerButtons() {
-  document.getElementById('btnFold').disabled = true;
-  document.getElementById('btnCheck').disabled = true;
-  document.getElementById('btnRaise').disabled = true;
-  document.getElementById('raiseSlider').disabled = true;
-}
 </script>
 
 </body>
