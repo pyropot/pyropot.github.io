@@ -15,15 +15,24 @@ const io = new Server(server, {
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
-const ANTE = 1;
 
 const rooms = {};
+
+const BOT_ROSTER = {
+  alex: { name: 'Alex', persona: 'aggressive', badge: '⚡ Aggro Bluffer' },
+  sam: { name: 'Sam', persona: 'calling_station', badge: '🛡️ Calling Station' },
+  jordan: { name: 'Jordan', persona: 'wild_chaser', badge: '🎲 Wild Gambler' },
+  victoria: { name: 'Victoria', persona: 'tight_passive', badge: '🗿 The Rock' },
+  jax: { name: 'Jax', persona: 'maniac', badge: '🔥 Loose Maniac' }
+};
 
 function getPublicRooms() {
   return Object.values(rooms).map(r => ({
     id: r.id,
     name: r.name,
     ruleVariant: r.ruleVariant,
+    ante: r.ante,
+    startingChips: r.startingChips,
     playerCount: r.players.length,
     humanCount: r.players.filter(p => !p.isBot).length,
     status: r.status,
@@ -39,7 +48,7 @@ function createDeck() {
   const deck = [];
   for (const s of SUITS) {
     for (const r of RANKS) {
-      deck.push({ rank: r, suit: s, value: RANK_VALUES[r], isFaceUp: false });
+      deck.push({ rank: r, suit: s, value: RANK_VALUES[r], isFaceUp: false, isHole: false });
     }
   }
   for (let i = deck.length - 1; i > 0; i--) {
@@ -61,7 +70,6 @@ function isWild(card, ruleVariant, followRank, playerLowHoleRank = null) {
   }
 
   if (ruleVariant === 'seven_makes') {
-    // 7s are wild
     if (card.rank === '7') return true;
     if (card.isSevenPairWild) return true;
   }
@@ -74,18 +82,17 @@ function isWild(card, ruleVariant, followRank, playerLowHoleRank = null) {
 }
 
 function getPlayerLowHoleRank(player) {
-  const holeCards = player.cards.filter(c => !c.isFaceUp);
+  // Permanently checks cards marked isHole === true
+  const holeCards = player.cards.filter(c => c.isHole);
   if (!holeCards.length) return null;
   const lowestVal = Math.min(...holeCards.map(c => c.value));
   const card = holeCards.find(c => c.value === lowestVal);
   return card ? card.rank : null;
 }
 
-/* Tag pairs summing to 7 for "Seven and What Makes It" (A=1 + 6=7, 2+5=7, 3+4=7) */
 function applySevenAndWhatMakesIt(cards) {
-  // Clear tags
   cards.forEach(c => c.isSevenPairWild = false);
-  const pairPairs = [ [14, 6], [2, 5], [3, 4] ]; // A is 14 -> value 1 in sum with 6
+  const pairPairs = [ [14, 6], [2, 5], [3, 4] ];
 
   pairPairs.forEach(([r1, r2]) => {
     const c1 = cards.find(c => (c.value === r1 || (r1===14 && c.rank==='A')) && !c.isSevenPairWild && c.rank !== '7');
@@ -97,7 +104,6 @@ function applySevenAndWhatMakesIt(cards) {
   });
 }
 
-/* ================= 7-CARD COMBINATORIAL HAND EVALUATOR ================= */
 function combinations(arr, k) {
   if (k === 0) return [[]];
   if (arr.length === 0) return [];
@@ -117,18 +123,18 @@ function evaluate5CardCombo(fiveCards, ruleVariant, followRank, lowHoleRank) {
     return { score: 10000000 + 14, desc: 'Five of a Kind (Aces)' };
   }
 
-  // 1. FIVE OF A KIND
   const rankMap = {};
   naturals.forEach(c => rankMap[c.value] = (rankMap[c.value] || 0) + 1);
   const distinctRanks = Object.keys(rankMap).map(Number).sort((a,b) => b - a);
 
+  // 1. Five of a Kind
   for (let r of distinctRanks) {
     if (rankMap[r] + W >= 5) {
-      return { score: 10000000 + r, desc: `Five of a Kind` };
+      return { score: 10000000 + r, desc: `Five of a Kind (${fiveCards.find(c => c.value===r)?.rank || 'Wilds'}s)` };
     }
   }
 
-  // 2. STRAIGHT FLUSH & FLUSH
+  // 2. Straight Flush
   const suitMap = {};
   naturals.forEach(c => {
     suitMap[c.suit] = suitMap[c.suit] || [];
@@ -139,25 +145,24 @@ function evaluate5CardCombo(fiveCards, ruleVariant, followRank, lowHoleRank) {
   for (let suit of SUITS) {
     const suitVals = suitMap[suit] || [];
     if (suitVals.length + W >= 5) {
-      // Check straight flush
       const sfHigh = getStraightHighRank(suitVals, W);
-      if (sfHigh) {
-        if (!bestStraightFlush || sfHigh > bestStraightFlush) bestStraightFlush = sfHigh;
+      if (sfHigh && (!bestStraightFlush || sfHigh > bestStraightFlush)) {
+        bestStraightFlush = sfHigh;
       }
     }
   }
   if (bestStraightFlush) {
-    return { score: 9000000 + bestStraightFlush, desc: bestStraightFlush === 14 ? 'Royal Flush' : 'Straight Flush' };
+    return { score: 9000000 + bestStraightFlush, desc: bestStraightFlush === 14 ? 'Royal Flush' : `Straight Flush (${bestStraightFlush}-High)` };
   }
 
-  // 3. FOUR OF A KIND
+  // 3. Four of a Kind
   for (let r of distinctRanks) {
     if (rankMap[r] + W >= 4) {
-      return { score: 8000000 + r, desc: 'Four of a Kind' };
+      return { score: 8000000 + r, desc: `Four of a Kind (${fiveCards.find(c => c.value===r)?.rank}s)` };
     }
   }
 
-  // 4. FULL HOUSE
+  // 4. Full House
   for (let r1 of distinctRanks) {
     const neededForTrip = Math.max(0, 3 - rankMap[r1]);
     if (neededForTrip <= W) {
@@ -166,61 +171,62 @@ function evaluate5CardCombo(fiveCards, ruleVariant, followRank, lowHoleRank) {
         if (r2 !== r1) {
           const neededForPair = Math.max(0, 2 - rankMap[r2]);
           if (neededForPair <= remainingWilds) {
-            return { score: 7000000 + (r1 * 100) + r2, desc: 'Full House' };
+            return { score: 7000000 + (r1 * 100) + r2, desc: `Full House (${fiveCards.find(c => c.value===r1)?.rank}s full of ${fiveCards.find(c => c.value===r2)?.rank}s)` };
           }
         }
       }
       if (remainingWilds >= 2 && distinctRanks.length === 1) {
-        return { score: 7000000 + (r1 * 100) + 14, desc: 'Full House' };
+        return { score: 7000000 + (r1 * 100) + 14, desc: `Full House` };
       }
     }
   }
 
-  // 5. FLUSH
+  // 5. Flush
   for (let suit of SUITS) {
     const sCards = suitMap[suit] || [];
     if (sCards.length + W >= 5) {
       const sorted = [...sCards].sort((a,b) => b - a);
-      return { score: 6000000 + (sorted[0] || 14), desc: 'Flush' };
+      return { score: 6000000 + (sorted[0] || 14), desc: `Flush (${suit})` };
     }
   }
 
-  // 6. STRAIGHT
+  // 6. Straight
   const allNatValues = naturals.map(c => c.value);
   const straightHigh = getStraightHighRank(allNatValues, W);
   if (straightHigh) {
-    return { score: 5000000 + straightHigh, desc: `${straightHigh}-High Straight` };
+    const straightName = straightHigh === 14 ? 'Ace-High (Broadway)' : `${straightHigh}-High`;
+    return { score: 5000000 + straightHigh, desc: `Straight (${straightName})` };
   }
 
-  // 7. THREE OF A KIND
+  // 7. Three of a Kind
   for (let r of distinctRanks) {
     if (rankMap[r] + W >= 3) {
-      return { score: 4000000 + r, desc: 'Three of a Kind' };
+      return { score: 4000000 + r, desc: `Three of a Kind (${fiveCards.find(c => c.value===r)?.rank}s)` };
     }
   }
 
-  // 8. TWO PAIR
+  // 8. Two Pair
   if (distinctRanks.length >= 2) {
     if (rankMap[distinctRanks[0]] >= 2 && rankMap[distinctRanks[1]] >= 2) {
-      return { score: 3000000 + (distinctRanks[0]*100) + distinctRanks[1], desc: 'Two Pair' };
+      return { score: 3000000 + (distinctRanks[0]*100) + distinctRanks[1], desc: `Two Pair` };
     }
   }
 
-  // 9. ONE PAIR
+  // 9. One Pair
   for (let r of distinctRanks) {
     if (rankMap[r] + W >= 2) {
-      return { score: 2000000 + r, desc: 'One Pair' };
+      return { score: 2000000 + r, desc: `One Pair (${fiveCards.find(c => c.value===r)?.rank}s)` };
     }
   }
 
-  // 10. HIGH CARD
+  // 10. High Card
   const topVal = naturals.length ? Math.max(...naturals.map(c => c.value)) : 14;
-  return { score: 1000000 + topVal, desc: 'High Card' };
+  return { score: 1000000 + topVal, desc: `High Card` };
 }
 
 function getStraightHighRank(valuesList, wildCount) {
   const uniq = Array.from(new Set(valuesList));
-  if (uniq.includes(14)) uniq.push(1); // Ace low support (A-2-3-4-5)
+  if (uniq.includes(14)) uniq.push(1);
 
   for (let high = 14; high >= 5; high--) {
     let missing = 0;
@@ -257,23 +263,37 @@ function evaluateBest7CardHand(cards, ruleVariant, followRank, lowHoleRank) {
   return best;
 }
 
+function sendRichLog(roomId, category, text) {
+  io.to(roomId).emit('rich_log', {
+    category, // 'DEAL', 'ACTION', 'WILD', 'SHOWDOWN', 'STREET'
+    text,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  });
+}
+
 /* ================= SERVER SOCKET LOGIC ================= */
 io.on('connection', (socket) => {
   socket.join('lobby');
   socket.emit('rooms_list', getPublicRooms());
 
-  socket.on('create_room', ({ tableName, playerName, ruleVariant }) => {
+  socket.on('create_room', ({ tableName, playerName, ruleVariant, startingChips, ante, botLineup }) => {
     const roomId = 'table_' + Math.random().toString(36).substr(2, 6);
+    const initChips = parseInt(startingChips, 10) || 100;
+    const initAnte = parseInt(ante, 10) || 1;
+
     rooms[roomId] = {
       id: roomId,
       name: tableName || `Table ${Object.keys(rooms).length + 1}`,
       hostId: socket.id,
       ruleVariant: ruleVariant || 'standard',
+      startingChips: initChips,
+      ante: initAnte,
+      botLineup: botLineup || ['alex', 'sam', 'jordan'],
       status: 'waiting',
       players: [{
         id: socket.id,
         name: playerName || 'Host',
-        chips: 100,
+        chips: initChips,
         cards: [],
         folded: false,
         currentBet: 0,
@@ -295,6 +315,7 @@ io.on('connection', (socket) => {
     socket.leave('lobby');
     socket.join(roomId);
     socket.emit('joined_room', { roomId });
+    sendRichLog(roomId, 'STREET', `Table <b>${rooms[roomId].name}</b> created with rules: <b>${ruleVariant.toUpperCase()}</b>.`);
     broadcastState(roomId);
     broadcastRoomsList();
   });
@@ -302,12 +323,12 @@ io.on('connection', (socket) => {
   socket.on('join_room', ({ roomId, playerName }) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('error_msg', 'Table not found!');
-    if (room.players.length >= 4) return socket.emit('error_msg', 'Table is full!');
+    if (room.players.length >= 4) return socket.emit('error_msg', 'Table is full (4/4 Players)!');
 
     room.players.push({
       id: socket.id,
       name: playerName || `Player ${room.players.length + 1}`,
-      chips: 100,
+      chips: room.startingChips || 100,
       cards: [],
       folded: false,
       currentBet: 0,
@@ -318,38 +339,39 @@ io.on('connection', (socket) => {
     socket.leave('lobby');
     socket.join(roomId);
     socket.emit('joined_room', { roomId });
+    sendRichLog(roomId, 'ACTION', `<b>${playerName}</b> joined the table.`);
     broadcastState(roomId);
     broadcastRoomsList();
   });
 
   socket.on('leave_room', ({ roomId }) => leaveTable(socket, roomId));
 
-  socket.on('start_hand', ({ roomId, fillBots }) => {
+  socket.on('start_hand', ({ roomId, fillBots, customBots }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id) return;
 
     if (fillBots) {
-      const botPool = [
-        { name: 'Alex (Aggro)', persona: 'aggressive' },
-        { name: 'Sam (Station)', persona: 'calling_station' },
-        { name: 'Jordan (Gambler)', persona: 'wild_chaser' }
-      ];
+      const chosenBots = customBots || room.botLineup || ['alex', 'sam', 'jordan'];
+      let botIdx = 0;
       while (room.players.length < 4) {
-        const botConfig = botPool[room.players.length - 1] || { name: `Bot ${room.players.length}`, persona: 'aggressive' };
+        const botKey = chosenBots[botIdx % chosenBots.length] || 'alex';
+        const botTemplate = BOT_ROSTER[botKey] || BOT_ROSTER.alex;
         room.players.push({
           id: `bot_${Math.random().toString(36).substr(2, 6)}`,
-          name: botConfig.name,
-          chips: 100,
+          name: botTemplate.name,
+          chips: room.startingChips || 100,
           cards: [],
           folded: false,
           currentBet: 0,
           isBot: true,
-          persona: botConfig.persona
+          persona: botTemplate.persona,
+          badge: botTemplate.badge
         });
+        botIdx++;
       }
     }
 
-    if (room.players.length < 2) return socket.emit('error_msg', 'Need at least 2 players!');
+    if (room.players.length < 2) return socket.emit('error_msg', 'Need at least 2 players to start!');
 
     room.status = 'playing';
     room.deck = createDeck();
@@ -360,51 +382,54 @@ io.on('connection', (socket) => {
 
     room.players.forEach(p => {
       p.cards = [];
-      p.folded = p.chips < ANTE;
+      p.folded = p.chips < room.ante;
       p.currentBet = 0;
       p.handDesc = '';
       if (!p.folded) {
-        p.chips -= ANTE;
-        room.pot += ANTE;
+        p.chips -= room.ante;
+        room.pot += room.ante;
       }
     });
 
+    sendRichLog(roomId, 'STREET', `🃏 <b>--- NEW HAND STARTED ---</b> (Ante $${room.ante})`);
+
     if (room.ruleVariant === 'roll_your_own') {
-      // Roll Your Own: Deal 3 down, then prompt each player to choose 1 to roll face-up
       for (let i = 0; i < 3; i++) {
-        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false, true); });
       }
       promptRollYourOwn(room);
     } else {
-      // Standard 7-Card Stud Street 3: 2 down, 1 up
+      // 3rd Street: 2 face-down (isHole = true), 1 face-up (isHole = false)
       for (let i = 0; i < 2; i++) {
-        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false, true); });
       }
-      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true, false); });
       startStreetBetting(room, 3);
     }
 
     broadcastRoomsList();
   });
 
-  /* Roll Your Own Card Selection */
   socket.on('roll_card_choice', ({ roomId, cardIndex }) => {
     const room = rooms[roomId];
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     if (player && player.cards[cardIndex]) {
       player.cards[cardIndex].isFaceUp = true;
+      player.cards[cardIndex].isHole = false;
+      sendRichLog(roomId, 'DEAL', `<b>${player.name}</b> rolled <b>${player.cards[cardIndex].rank}${player.cards[cardIndex].suit}</b> face-up.`);
       room.pendingRollChoices.delete(socket.id);
     }
 
     if (room.pendingRollChoices.size === 0) {
-      // Auto roll bots
       room.players.forEach(p => {
         if (p.isBot && !p.folded) {
           const downCards = p.cards.filter(c => !c.isFaceUp);
           if (downCards.length) {
             const bestCard = downCards.sort((a,b) => b.value - a.value)[0];
             bestCard.isFaceUp = true;
+            bestCard.isHole = false;
+            sendRichLog(roomId, 'DEAL', `<b>${p.name}</b> rolled <b>${bestCard.rank}${bestCard.suit}</b> face-up.`);
           }
         }
       });
@@ -430,14 +455,16 @@ io.on('connection', (socket) => {
     room.pendingRiverChoices.delete(socket.id);
     const player = room.players.find(p => p.id === socket.id);
     if (player && !player.folded && player.cards.length === 6) {
-      dealCard(room, player, faceUp);
+      dealCard(room, player, faceUp, !faceUp);
+      sendRichLog(roomId, 'RIVER', `<b>${player.name}</b> chose their River card <b>${faceUp ? 'FACE-UP 👁️' : 'FACE-DOWN 🔒'}</b>.`);
     }
 
     if (room.pendingRiverChoices.size === 0) {
       room.players.forEach(p => {
         if (p.isBot && !p.folded && p.cards.length === 6) {
           const botFaceUp = p.persona === 'aggressive' ? Math.random() < 0.65 : Math.random() < 0.25;
-          dealCard(room, p, botFaceUp);
+          dealCard(room, p, botFaceUp, !botFaceUp);
+          sendRichLog(roomId, 'RIVER', `<b>${p.name}</b> received their River card <b>${botFaceUp ? 'FACE-UP 👁️' : 'FACE-DOWN 🔒'}</b>.`);
         }
       });
       startStreetBetting(room, 7);
@@ -468,7 +495,10 @@ function leaveTable(socket, roomId) {
 
   socket.leave(roomId);
   socket.join('lobby');
+  const departingPlayer = room.players.find(p => p.id === socket.id);
   room.players = room.players.filter(p => p.id !== socket.id);
+
+  sendRichLog(roomId, 'ACTION', `<b>${departingPlayer?.name || 'A player'}</b> left the table.`);
 
   const humanPlayers = room.players.filter(p => !p.isBot);
   if (humanPlayers.length === 0) {
@@ -476,6 +506,7 @@ function leaveTable(socket, roomId) {
   } else {
     if (room.hostId === socket.id) {
       room.hostId = humanPlayers[0].id;
+      sendRichLog(roomId, 'ACTION', `Host passed to <b>${humanPlayers[0].name}</b>.`);
     }
     broadcastState(roomId);
   }
@@ -484,20 +515,27 @@ function leaveTable(socket, roomId) {
   broadcastRoomsList();
 }
 
-function dealCard(room, player, isFaceUp) {
+function dealCard(room, player, isFaceUp, isHole = false) {
   const card = room.deck.pop();
   if (!card) return;
   card.isFaceUp = isFaceUp;
+  card.isHole = isHole;
   player.cards.push(card);
+
+  if (isFaceUp) {
+    sendRichLog(room.id, 'DEAL', `<b>${player.name}</b> dealt <b>${card.rank}${card.suit}</b> (Face-Up).`);
+  } else {
+    sendRichLog(room.id, 'DEAL', `<b>${player.name}</b> dealt a Hole card (Face-Down).`);
+  }
 
   if (room.ruleVariant === 'follow' && isFaceUp) {
     if (room.awaitingQueenFollow) {
       room.followRank = card.rank;
       room.awaitingQueenFollow = false;
-      io.to(room.id).emit('notification', { text: `👑 Queen followed by ${card.rank}! Queens & ${card.rank}s are WILD!` });
+      sendRichLog(room.id, 'WILD', `👑 Follow Queen Activated: <b>${card.rank}s</b> are now WILD alongside Queens!`);
     } else if (card.rank === 'Q') {
       room.awaitingQueenFollow = true;
-      io.to(room.id).emit('notification', { text: `👑 Face-up Queen dealt! Next face-up card sets wild rank!` });
+      sendRichLog(room.id, 'WILD', `👑 Queen dealt face-up! Next face-up card establishes the wild rank!`);
     }
   }
 }
@@ -506,6 +544,9 @@ function startStreetBetting(room, street) {
   room.currentStreet = street;
   room.highestBet = 0;
   room.players.forEach(p => p.currentBet = 0);
+
+  const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (The River)' };
+  sendRichLog(room.id, 'STREET', `🔔 <b>--- ${streetNames[street]} Betting Round ---</b>`);
 
   let highestVal = -1;
   let highestIdx = 0;
@@ -565,11 +606,11 @@ function runBotTurn(room, bot) {
     } else {
       action = (toCall > bot.chips) ? 'check' : ((room.currentStreet === 7 && hand.score < 2000000 && Math.random() < 0.04) ? 'fold' : 'check');
     }
-  } else if (bot.persona === 'aggressive') {
+  } else if (bot.persona === 'aggressive' || bot.persona === 'maniac') {
     if (toCall === 0) {
-      if (Math.random() < 0.65) {
+      if (Math.random() < (bot.persona === 'maniac' ? 0.8 : 0.65)) {
         action = 'raise';
-        raiseAmt = Math.min(bot.chips, minInc * (Math.random() < 0.5 ? 2 : 1));
+        raiseAmt = Math.min(bot.chips, minInc * 2);
       } else {
         action = 'check';
       }
@@ -583,7 +624,14 @@ function runBotTurn(room, bot) {
         action = (room.currentStreet >= 6 && hand.score < 2000000) ? 'fold' : 'check';
       }
     }
+  } else if (bot.persona === 'tight_passive') {
+    if (toCall === 0) {
+      action = hand.score >= 5000000 ? 'raise' : 'check';
+    } else {
+      action = (hand.score >= 3000000 || wildCount > 0) ? 'check' : 'fold';
+    }
   } else {
+    // wild_chaser
     if (wildCount > 0 || hand.score >= 5000000) {
       action = (Math.random() < 0.7) ? 'raise' : 'check';
       raiseAmt = Math.min(bot.chips, toCall + minInc + (wildCount * 2));
@@ -600,16 +648,16 @@ function applyPlayerAction(room, player, action, raiseAmt = 0) {
 
   if (action === 'fold') {
     player.folded = true;
-    io.to(room.id).emit('notification', { text: `${player.name} folds.` });
+    sendRichLog(room.id, 'ACTION', `<b>${player.name}</b> folded.`);
   } else if (action === 'check') {
     if (toCall > 0) {
       const amt = Math.min(toCall, player.chips);
       player.chips -= amt;
       player.currentBet += amt;
       room.pot += amt;
-      io.to(room.id).emit('notification', { text: `${player.name} calls $${amt}.` });
+      sendRichLog(room.id, 'ACTION', `<b>${player.name}</b> called $${amt}.`);
     } else {
-      io.to(room.id).emit('notification', { text: `${player.name} checks.` });
+      sendRichLog(room.id, 'ACTION', `<b>${player.name}</b> checked.`);
     }
   } else if (action === 'raise') {
     const amt = Math.min(raiseAmt, player.chips);
@@ -618,7 +666,7 @@ function applyPlayerAction(room, player, action, raiseAmt = 0) {
     room.highestBet = player.currentBet;
     room.lastRaiserIndex = room.activeTurnIndex;
     room.pot += amt;
-    io.to(room.id).emit('notification', { text: `💥 ${player.name} raises to $${room.highestBet} (+$${amt})!` });
+    sendRichLog(room.id, 'ACTION', `💥 <b>${player.name}</b> bet/raised to $${room.highestBet} (+$${amt})!`);
   }
 
   broadcastState(room.id);
@@ -646,18 +694,17 @@ function advanceStreet(room) {
   if (room.currentStreet < 6) {
     room.currentStreet++;
     if (room.ruleVariant === 'roll_your_own') {
-      // Deal down card, then prompt roll
-      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false, true); });
       promptRollYourOwn(room);
     } else {
-      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true, false); });
       startStreetBetting(room, room.currentStreet);
     }
   } else if (room.currentStreet === 6) {
     const humans = room.players.filter(p => !p.isBot && !p.folded);
     room.pendingRiverChoices = new Set(humans.map(p => p.id));
     if (room.pendingRiverChoices.size === 0) {
-      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false, true); });
       startStreetBetting(room, 7);
     } else {
       humans.forEach(h => io.to(h.id).emit('prompt_river_modal'));
@@ -669,6 +716,7 @@ function advanceStreet(room) {
 }
 
 function showdown(room) {
+  // Flip face-up for visual showdown display WITHOUT clearing card.isHole!
   room.players.forEach(p => {
     if (!p.folded) p.cards.forEach(c => c.isFaceUp = true);
   });
@@ -677,11 +725,16 @@ function showdown(room) {
   let bestScore = -1;
   let bestDesc = '';
 
+  sendRichLog(room.id, 'SHOWDOWN', `🏆 <b>=== SHOWDOWN RESULTS ===</b>`);
+
   room.players.forEach(p => {
     if (!p.folded) {
       const lowHole = getPlayerLowHoleRank(p);
       const res = evaluateBest7CardHand(p.cards, room.ruleVariant, room.followRank, lowHole);
       p.handDesc = res.desc;
+
+      sendRichLog(room.id, 'SHOWDOWN', `<b>${p.name}</b> holds: <b>${res.desc}</b> ${lowHole ? `(Low Hole Wild: ${lowHole}s)` : ''}`);
+
       if (res.score > bestScore) {
         bestScore = res.score;
         bestDesc = res.desc;
@@ -694,6 +747,8 @@ function showdown(room) {
 
   const split = Math.floor(room.pot / winners.length);
   winners.forEach(w => w.chips += split);
+  sendRichLog(room.id, 'SHOWDOWN', `🎉 <b>${winners.map(w => w.name).join(', ')}</b> wins $${split} with <b>${bestDesc}</b>!`);
+
   room.pot = 0;
   room.currentStreet = 8;
   room.status = 'waiting';
@@ -704,10 +759,11 @@ function showdown(room) {
 function endHand(room, winner) {
   if (winner) {
     winner.chips += room.pot;
+    sendRichLog(room.id, 'SHOWDOWN', `🏆 <b>${winner.name}</b> collected the uncontested pot of $${room.pot}.`);
     room.pot = 0;
     room.currentStreet = 8;
     room.status = 'waiting';
-    broadcastState(room.id, `🏆 ${winner.name} won the pot (Everyone else folded)!`);
+    broadcastState(room.id, `🏆 ${winner.name} won the pot!`);
     broadcastRoomsList();
   }
 }
@@ -731,6 +787,7 @@ function broadcastState(roomId, message = null) {
         currentBet: p.currentBet,
         isBot: p.isBot,
         persona: p.persona,
+        badge: p.badge,
         lowHoleRank: (room.currentStreet === 8 || p.id === recipient.id) ? pLowHole : null,
         handDesc: p.handDesc || (p.id === recipient.id && p.cards.length >= 5 ? evaluateBest7CardHand(p.cards, room.ruleVariant, room.followRank, recipientLowHole).desc : ''),
         cards: p.cards.map(c => {
@@ -738,7 +795,7 @@ function broadcastState(roomId, message = null) {
             const cardWild = isWild(c, room.ruleVariant, room.followRank, pLowHole);
             return { ...c, isWild: cardWild };
           }
-          return { isFaceUp: false };
+          return { isFaceUp: false, isHole: c.isHole };
         })
       };
     });
@@ -762,4 +819,4 @@ function broadcastState(roomId, message = null) {
 }
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Casino Engine Online on port ${PORT}`));
+server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`));

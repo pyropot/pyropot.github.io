@@ -11,7 +11,7 @@
       --felt-gradient: radial-gradient(ellipse at center, #239b56 0%, #196f3d 60%, #0f4024 100%);
       --felt-border: #3d2314;
       --accent-color: #f1c40f;
-      --panel-bg: rgba(13, 23, 27, 0.94);
+      --panel-bg: rgba(13, 23, 27, 0.96);
       --card-back: repeating-linear-gradient(45deg, #1c2833, #1c2833 5px, #273746 5px, #273746 10px);
     }
 
@@ -20,7 +20,7 @@
       --felt-gradient: radial-gradient(ellipse at center, #1b4f72 0%, #154360 60%, #0b2230 100%);
       --felt-border: #1a252f;
       --accent-color: #00d2d3;
-      --panel-bg: rgba(10, 20, 30, 0.94);
+      --panel-bg: rgba(10, 20, 30, 0.96);
       --card-back: repeating-linear-gradient(45deg, #0b1a26, #0b1a26 5px, #142d40 5px, #142d40 10px);
     }
 
@@ -29,7 +29,7 @@
       --felt-gradient: radial-gradient(ellipse at center, #922b21 0%, #78281f 60%, #44140e 100%);
       --felt-border: #2c120a;
       --accent-color: #f39c12;
-      --panel-bg: rgba(30, 12, 14, 0.94);
+      --panel-bg: rgba(30, 12, 14, 0.96);
       --card-back: repeating-linear-gradient(45deg, #3d0c0c, #3d0c0c 5px, #5c1414 5px, #5c1414 10px);
     }
 
@@ -38,7 +38,7 @@
       --felt-gradient: radial-gradient(ellipse at center, #4a154b 0%, #2e0854 60%, #160324 100%);
       --felt-border: #00d2d3;
       --accent-color: #ff007f;
-      --panel-bg: rgba(22, 7, 33, 0.94);
+      --panel-bg: rgba(22, 7, 33, 0.96);
       --card-back: repeating-linear-gradient(45deg, #2b0438, #2b0438 5px, #4d0963 5px, #4d0963 10px);
     }
 
@@ -47,8 +47,35 @@
       --felt-gradient: radial-gradient(ellipse at center, #4d4427 0%, #2e2815 60%, #1a160a 100%);
       --felt-border: #7d6608;
       --accent-color: #f1c40f;
-      --panel-bg: rgba(26, 23, 13, 0.95);
+      --panel-bg: rgba(26, 23, 13, 0.96);
       --card-back: repeating-linear-gradient(45deg, #3b3311, #3b3311 5px, #5c501e 5px, #5c501e 10px);
+    }
+
+    [data-theme="monte-carlo"] {
+      --bg-gradient: radial-gradient(circle at center, #1e272c 0%, #0d1215 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #37474f 0%, #263238 60%, #171f22 100%);
+      --felt-border: #b0bec5;
+      --accent-color: #eceff1;
+      --panel-bg: rgba(23, 31, 34, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 5px, #455a64 5px, #455a64 10px);
+    }
+
+    [data-theme="synthwave"] {
+      --bg-gradient: radial-gradient(circle at center, #2e0854 0%, #120324 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #005f73 0%, #0a9396 60%, #001219 100%);
+      --felt-border: #ff007f;
+      --accent-color: #ee9b00;
+      --panel-bg: rgba(24, 7, 36, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #7b2cbf, #7b2cbf 5px, #9d4edd 5px, #9d4edd 10px);
+    }
+
+    [data-theme="deep-space"] {
+      --bg-gradient: radial-gradient(circle at center, #111111 0%, #000000 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1f1f1f 0%, #121212 60%, #050505 100%);
+      --felt-border: #333333;
+      --accent-color: #00ffcc;
+      --panel-bg: rgba(18, 18, 18, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #222222, #222222 5px, #333333 5px, #333333 10px);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -74,20 +101,20 @@
       margin-bottom: 8px;
     }
     h1 {
-      font-size: 1.6rem;
+      font-size: 1.5rem;
       font-weight: 900;
       letter-spacing: 1px;
       color: var(--accent-color);
       text-shadow: 0 2px 6px rgba(0,0,0,0.8);
     }
-    .header-btns { display: flex; gap: 10px; }
+    .header-btns { display: flex; gap: 8px; }
     .icon-btn {
       background: var(--panel-bg);
       border: 1.5px solid var(--accent-color);
       color: #fff;
       padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: bold;
       cursor: pointer;
       display: flex;
@@ -97,68 +124,69 @@
     }
     .icon-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
 
-    /* LOBBY VIEW */
+    /* LOBBY / TABLE BROWSER SCREEN */
     .lobby-container {
       width: 96vw;
       max-width: 1040px;
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 20px;
       margin-top: 10px;
     }
-    @media (max-width: 800px) { .lobby-container { grid-template-columns: 1fr; } }
+    @media (max-width: 840px) { .lobby-container { grid-template-columns: 1fr; } }
 
     .lobby-card {
       background: var(--panel-bg);
       border: 2px solid var(--accent-color);
       border-radius: 14px;
-      padding: 20px;
+      padding: 18px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
     .lobby-card h2 {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       color: var(--accent-color);
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
+    .lobby-card label { font-size: 0.78rem; color: #aaa; margin-top: 4px; display: block; }
     .lobby-card input, .lobby-card select {
       width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.15);
       background: rgba(0,0,0,0.5);
       color: #fff;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     .table-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      max-height: 480px;
+      max-height: 520px;
       overflow-y: auto;
     }
     .table-item {
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 10px;
-      padding: 14px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       transition: all 0.2s;
     }
     .table-item:hover { border-color: var(--accent-color); background: rgba(255,255,255,0.1); }
-    .table-info-title { font-size: 1.05rem; font-weight: bold; color: #fff; }
-    .table-info-meta { font-size: 0.8rem; color: #aaa; margin-top: 3px; }
+    .table-info-title { font-size: 1rem; font-weight: bold; color: #fff; }
+    .table-info-meta { font-size: 0.78rem; color: #aaa; margin-top: 2px; }
     .badge-status {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: bold;
       margin-left: 6px;
     }
@@ -289,7 +317,7 @@
       content: '★';
       position: absolute;
       top: -5px; right: -2px;
-      color: var(--accent-color);
+      color: #f39c12;
       font-size: 11px;
     }
 
@@ -347,22 +375,67 @@
       cursor: pointer;
     }
 
-    .game-log {
-      width: 96vw;
-      max-width: 1040px;
+    /* SLIDE-OUT SIDEBAR LOG */
+    .sidebar-drawer {
+      position: fixed;
+      top: 0;
+      right: -380px;
+      width: 360px;
+      height: 100vh;
       background: var(--panel-bg);
-      border-radius: 8px;
-      padding: 8px 14px;
-      height: 65px;
-      overflow-y: auto;
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.8rem;
-      color: #bdc3c7;
-      margin-top: 8px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border-left: 2px solid var(--accent-color);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+      z-index: 2000;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
     }
+    .sidebar-drawer.open { right: 0; }
+    .sidebar-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header h3 { font-size: 1.1rem; color: var(--accent-color); }
+    .sidebar-close-btn {
+      background: none; border: none; color: #aaa; font-size: 1.4rem; cursor: pointer;
+    }
+    .sidebar-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .log-item {
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+      padding: 6px 10px;
+      border-left: 3px solid #7f8c8d;
+      line-height: 1.35;
+    }
+    .log-badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 900;
+      margin-right: 4px;
+      text-transform: uppercase;
+    }
+    .badge-deal { background: #2980b9; color: #fff; border-left-color: #2980b9; }
+    .badge-action { background: #27ae60; color: #fff; border-left-color: #27ae60; }
+    .badge-wild { background: #8e44ad; color: #fff; border-left-color: #8e44ad; }
+    .badge-showdown { background: #f39c12; color: #000; border-left-color: #f39c12; }
+    .badge-street { background: #d35400; color: #fff; border-left-color: #d35400; }
+    .badge-river { background: #16a085; color: #fff; border-left-color: #16a085; }
 
-    /* Modal Backdrop */
+    /* Modals */
     .modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -382,7 +455,7 @@
       border-radius: 16px;
       padding: 24px;
       width: 90%;
-      max-width: 440px;
+      max-width: 460px;
       box-shadow: 0 16px 40px rgba(0,0,0,0.9);
       text-align: center;
     }
@@ -411,13 +484,7 @@
     }
     .river-card-opt:hover { transform: translateY(-4px); }
 
-    /* Roll Your Own Card Select Tray */
-    .roll-cards-tray {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin: 20px 0;
-    }
+    .roll-cards-tray { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
     .roll-select-card {
       width: 50px;
       height: 72px;
@@ -444,6 +511,17 @@
 </head>
 <body>
 
+  <!-- Slide-Out Sidebar Log -->
+  <div class="sidebar-drawer" id="sidebarDrawer">
+    <div class="sidebar-header">
+      <h3>📜 Casino Live History</h3>
+      <button class="sidebar-close-btn" onclick="toggleSidebar(false)">✕</button>
+    </div>
+    <div class="sidebar-content" id="sidebarLogContent">
+      <div class="log-item"><span class="log-badge badge-street">System</span>Connected to table feed.</div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div class="modal-backdrop" id="settingsModal" style="display:none;">
     <div class="modal-box">
@@ -455,6 +533,9 @@
         <option value="crimson-vip">High Roller Crimson</option>
         <option value="cyber-neon">Cyberpunk Neon</option>
         <option value="golden-lounge">Golden VIP Lounge</option>
+        <option value="monte-carlo">Monte Carlo Platinum</option>
+        <option value="synthwave">Retro 80s Synthwave</option>
+        <option value="deep-space">Deep Space Obsidian</option>
       </select>
 
       <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
@@ -499,6 +580,7 @@
   <header>
     <h1 id="mainTitle">7-CARD STUD POKER</h1>
     <div class="header-btns">
+      <button class="icon-btn" onclick="toggleSidebar(true)">📜 Live History</button>
       <button class="icon-btn btn-leave" id="leaveBtn" onclick="leaveTable()" style="display:none;">🚪 Leave Table</button>
       <button class="icon-btn" onclick="toggleSettingsModal(true)">⚙️ Settings & Themes</button>
     </div>
@@ -508,13 +590,13 @@
   <div class="lobby-container" id="lobbyView">
     <div class="lobby-card">
       <h2>➕ Create a Table</h2>
-      <label style="font-size:0.8rem; color:#aaa;">Your Nickname</label>
+      <label>Your Nickname</label>
       <input type="text" id="playerNameInput" placeholder="Your Name" value="Hero">
 
-      <label style="font-size:0.8rem; color:#aaa;">Table Name</label>
+      <label>Table Name</label>
       <input type="text" id="tableNameInput" placeholder="e.g. Vegas VIP Table" value="Vegas VIP Table">
 
-      <label style="font-size:0.8rem; color:#aaa;">House Rules & Variants</label>
+      <label>House Rules & Variants</label>
       <select id="ruleVariantInput">
         <option value="standard">Standard 7-Card Stud</option>
         <option value="deuces">Deuces Wild (2s Wild)</option>
@@ -522,6 +604,35 @@
         <option value="seven_makes">Seven & What Makes It (7s & sums of 7 Wild)</option>
         <option value="low_hole">Low Hole Wild (Lowest Hole Card Wild)</option>
         <option value="roll_your_own">Roll Your Own (Tahoe Stud / Choose Roll)</option>
+      </select>
+
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label>Starting Chips</label>
+          <select id="startingChipsInput">
+            <option value="50">$50</option>
+            <option value="100" selected>$100</option>
+            <option value="200">$200</option>
+            <option value="500">$500</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>Ante</label>
+          <select id="anteInput">
+            <option value="1" selected>$1</option>
+            <option value="2">$2</option>
+            <option value="5">$5</option>
+            <option value="10">$10</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Bot Lineup (When bots are added)</label>
+      <select id="botSetInput">
+        <option value="alex,sam,jordan">Mixed (Alex, Sam, Jordan)</option>
+        <option value="alex,jax,jordan">High Aggression (Alex, Jax, Jordan)</option>
+        <option value="sam,victoria,jordan">Passive & Gamblers (Sam, Victoria, Jordan)</option>
+        <option value="jax,jax,alex">All Maniacs (Jax, Jax, Alex)</option>
       </select>
 
       <button class="modal-btn" onclick="createTable()">Create & Sit At Table</button>
@@ -602,8 +713,6 @@
         <button class="btn btn-start" id="btnStart" onclick="startHand(true)">Deal Hand (+Bots)</button>
       </div>
     </div>
-
-    <div class="game-log" id="gameLog"><p>Waiting for Host to start hand...</p></div>
   </div>
 
 <script>
@@ -625,6 +734,12 @@
 
   function toggleSettingsModal(show) {
     document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
+  }
+
+  function toggleSidebar(show) {
+    const drawer = document.getElementById('sidebarDrawer');
+    if (show) drawer.classList.add('open');
+    else drawer.classList.remove('open');
   }
 
   applyTheme(savedTheme);
@@ -667,19 +782,26 @@
   let currentRoomId = null;
   let lastState = null;
 
-  function log(msg) {
-    const logBox = document.getElementById('gameLog');
-    const p = document.createElement('p');
-    p.innerHTML = msg;
-    logBox.prepend(p);
+  function appendRichLog(category, text, time) {
+    const container = document.getElementById('sidebarLogContent');
+    const item = document.createElement('div');
+    item.className = 'log-item';
+
+    const catClass = `badge-${category.toLowerCase()}`;
+    item.innerHTML = `<span class="log-badge ${catClass}">${category}</span> <span style="color:#aaa; font-size:0.7rem;">[${time || ''}]</span> ${text}`;
+    container.appendChild(item);
+    container.scrollTop = container.scrollHeight;
   }
 
   function createTable() {
     const playerName = document.getElementById('playerNameInput').value.trim() || 'Hero';
     const tableName = document.getElementById('tableNameInput').value.trim() || 'Vegas Table';
     const ruleVariant = document.getElementById('ruleVariantInput').value;
+    const startingChips = document.getElementById('startingChipsInput').value;
+    const ante = document.getElementById('anteInput').value;
+    const botLineup = document.getElementById('botSetInput').value.split(',');
 
-    socket.emit('create_room', { tableName, playerName, ruleVariant });
+    socket.emit('create_room', { tableName, playerName, ruleVariant, startingChips, ante, botLineup });
   }
 
   function joinTable(roomId) {
@@ -693,7 +815,8 @@
 
   function startHand(fillBots) {
     if (currentRoomId) {
-      socket.emit('start_hand', { roomId: currentRoomId, fillBots });
+      const customBots = document.getElementById('botSetInput').value.split(',');
+      socket.emit('start_hand', { roomId: currentRoomId, fillBots, customBots });
       playSound('chip');
     }
   }
@@ -720,7 +843,10 @@
   });
 
   socket.on('error_msg', (msg) => alert(msg));
-  socket.on('notification', (data) => log(data.text));
+
+  socket.on('rich_log', (data) => {
+    appendRichLog(data.category, data.text, data.time);
+  });
 
   socket.on('rooms_list', (rooms) => {
     const container = document.getElementById('tableListContainer');
@@ -747,7 +873,7 @@
       item.innerHTML = `
         <div>
           <div class="table-info-title">${r.name} ${statusBadge}</div>
-          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleLabels[r.ruleVariant] || 'Standard'}</b> | Players: <b>${r.playerCount}/4</b></div>
+          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleLabels[r.ruleVariant] || 'Standard'}</b> | Ante: <b>$${r.ante || 1}</b> | Players: <b>${r.playerCount}/4</b></div>
         </div>
         <button class="btn btn-raise" style="padding:6px 14px; font-size:0.85rem;" onclick="joinTable('${r.id}')" ${r.playerCount >= 4 ? 'disabled' : ''}>${r.playerCount >= 4 ? 'Full' : 'Join Table'}</button>
       `;
@@ -755,7 +881,6 @@
     });
   });
 
-  /* River Choice Modal */
   socket.on('prompt_river_modal', () => {
     document.getElementById('riverModal').style.display = 'flex';
   });
@@ -766,7 +891,6 @@
     playSound('deal');
   }
 
-  /* Roll Your Own Modal */
   socket.on('prompt_roll_modal', () => {
     const hero = lastState?.players.find(p => p.id === socket.id);
     if (!hero) return;
@@ -791,7 +915,6 @@
     document.getElementById('rollModal').style.display = 'flex';
   });
 
-  /* Game State Sync */
   socket.on('game_state', (state) => {
     lastState = state;
     playSound('deal');
@@ -822,9 +945,11 @@
       if (state.followRank) renderWildBadge(state.followRank);
     } else if (state.ruleVariant === 'seven_makes') {
       renderWildBadge('7');
-      wildContainer.innerHTML += '<span style="font-size:0.75rem; color:#f1c40f; margin-left:4px;">(+ Combos summing to 7)</span>';
+      wildContainer.innerHTML += '<span style="font-size:0.75rem; color:#f1c40f; margin-left:4px;">(+ Sums to 7: A+6, 2+5, 3+4)</span>';
     } else if (state.ruleVariant === 'low_hole') {
-      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#00d2d3;">Lowest Hole Card Wild</span>';
+      const hero = state.players.find(p => p.id === socket.id);
+      const lowHoleTxt = hero?.lowHoleRank ? `Your Wild: ${hero.lowHoleRank}s` : 'Lowest Hole Card Wild';
+      wildContainer.innerHTML = `<span style="font-size:0.75rem; color:#00d2d3; font-weight:bold;">${lowHoleTxt}</span>`;
     } else if (state.ruleVariant === 'roll_your_own') {
       wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#2ecc71;">Tahoe Stud (Roll Own)</span>';
     } else {
@@ -854,6 +979,7 @@
 
       document.getElementById(`name-${idx}`).innerText = p.name + (p.id === socket.id ? ' (You)' : '');
       document.getElementById(`chips-${idx}`).innerText = `$${p.chips}`;
+      document.getElementById(`badge-${idx}`).innerText = p.badge || (p.id === state.hostId ? '👑 Table Host' : `Seat ${idx+1}`);
       document.getElementById(`status-${idx}`).innerText = p.handDesc || (p.folded ? 'Folded' : '');
 
       if (idx === state.activeTurnIndex && state.status === 'playing' && state.currentStreet < 8) seat.classList.add('active-turn');
@@ -899,9 +1025,8 @@
       syncSlider(minLegal);
     }
 
-    if (state.message) {
-      log(state.message);
-      if (state.currentStreet === 8) playSound('win');
+    if (state.message && state.currentStreet === 8) {
+      playSound('win');
     }
   });
 
