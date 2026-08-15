@@ -16,7 +16,7 @@ const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
 const ANTE = 1;
 
-const rooms = {}; // Store active game rooms
+const rooms = {};
 
 function createDeck() {
   const deck = [];
@@ -33,7 +33,7 @@ function createDeck() {
 }
 
 function isWild(card, ruleVariant, followRank) {
-  if (!card) return false;
+  if (!card || !card.rank) return false;
   if (ruleVariant === 'deuces' && card.rank === '2') return true;
   if (ruleVariant === 'follow') {
     if (card.rank === 'Q') return true;
@@ -43,11 +43,12 @@ function isWild(card, ruleVariant, followRank) {
 }
 
 function evaluate7Cards(cards, ruleVariant, followRank) {
-  const wildCount = cards.filter(c => isWild(c, ruleVariant, followRank)).length;
-  const naturals = cards.filter(c => !isWild(c, ruleVariant, followRank));
+  const wildCards = cards.filter(c => isWild(c, ruleVariant, followRank));
+  const naturalCards = cards.filter(c => !isWild(c, ruleVariant, followRank));
+  const wildCount = wildCards.length;
 
   const rankCounts = {};
-  naturals.forEach(c => rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1);
+  naturalCards.forEach(c => rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1);
   const counts = Object.values(rankCounts).sort((a,b) => b - a);
   const topCount = counts[0] || 0;
   const effectiveSameKind = topCount + wildCount;
@@ -58,7 +59,7 @@ function evaluate7Cards(cards, ruleVariant, followRank) {
     return { score: 700, desc: 'Full House' };
   }
   const suitCounts = {};
-  naturals.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1);
+  naturalCards.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1);
   const maxSuit = Math.max(...Object.values(suitCounts), 0);
   if (maxSuit + wildCount >= 5) return { score: 600, desc: 'Flush' };
   if (effectiveSameKind >= 3) return { score: 400, desc: '3 of a Kind' };
@@ -70,7 +71,6 @@ function evaluate7Cards(cards, ruleVariant, followRank) {
 }
 
 io.on('connection', (socket) => {
-  // Create / Join Room
   socket.on('join_room', ({ roomId, playerName, ruleVariant }) => {
     socket.join(roomId);
     if (!rooms[roomId]) {
@@ -101,35 +101,37 @@ io.on('connection', (socket) => {
         cards: [],
         folded: false,
         currentBet: 0,
-        isBot: false
+        isBot: false,
+        persona: 'hero'
       });
     }
 
     broadcastState(roomId);
   });
 
-  // Start Hand (Optionally fills empty seats with bots)
   socket.on('start_hand', ({ roomId, fillBots, ruleVariant }) => {
     const room = rooms[roomId];
     if (!room) return;
 
     if (ruleVariant) room.ruleVariant = ruleVariant;
 
-    // Fill remaining spots with bots if requested
     if (fillBots) {
-      const botNames = ['Sam (Calling Station)', 'Alex (Aggro)', 'Jordan (Wild Chaser)'];
-      const botPersonas = ['calling_station', 'aggressive', 'wild_chaser'];
+      const botPool = [
+        { name: 'Alex', persona: 'aggressive' },
+        { name: 'Sam', persona: 'calling_station' },
+        { name: 'Jordan', persona: 'wild_chaser' }
+      ];
       while (room.players.length < 4) {
-        const idx = room.players.length - 1;
+        const botConfig = botPool[room.players.length - 1] || { name: `Bot ${room.players.length}`, persona: 'aggressive' };
         room.players.push({
-          id: `bot_${Math.random().toString(36).substr(2, 5)}`,
-          name: botNames[idx] || `Bot ${idx + 1}`,
+          id: `bot_${Math.random().toString(36).substr(2, 6)}`,
+          name: botConfig.name,
           chips: 100,
           cards: [],
           folded: false,
           currentBet: 0,
           isBot: true,
-          persona: botPersonas[idx] || 'aggressive'
+          persona: botConfig.persona
         });
       }
     }
@@ -145,13 +147,14 @@ io.on('connection', (socket) => {
       p.cards = [];
       p.folded = p.chips < ANTE;
       p.currentBet = 0;
+      p.handDesc = '';
       if (!p.folded) {
         p.chips -= ANTE;
         room.pot += ANTE;
       }
     });
 
-    // Deal 3rd Street: 2 face-down, 1 face-up
+    // 3rd Street: 2 face-down, 1 face-up
     for (let i = 0; i < 2; i++) {
       room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
     }
@@ -160,7 +163,6 @@ io.on('connection', (socket) => {
     startStreetBetting(room, 3);
   });
 
-  // Player Bet Action
   socket.on('take_action', ({ roomId, action, raiseAmt }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -170,22 +172,21 @@ io.on('connection', (socket) => {
     applyPlayerAction(room, player, action, raiseAmt);
   });
 
-  // 7th Street Orientation Choice
   socket.on('river_choice', ({ roomId, faceUp }) => {
     const room = rooms[roomId];
     if (!room) return;
 
     room.pendingRiverChoices.delete(socket.id);
     const player = room.players.find(p => p.id === socket.id);
-    if (player && !player.folded) {
+    if (player && !player.folded && player.cards.length === 6) {
       dealCard(room, player, faceUp);
     }
 
     if (room.pendingRiverChoices.size === 0) {
-      // All humans answered, deal bots and start final betting
+      // Deal bots
       room.players.forEach(p => {
-        if (p.isBot && !p.folded) {
-          const botFaceUp = p.persona === 'aggressive' ? Math.random() < 0.6 : Math.random() < 0.2;
+        if (p.isBot && !p.folded && p.cards.length === 6) {
+          const botFaceUp = p.persona === 'aggressive' ? Math.random() < 0.65 : Math.random() < 0.25;
           dealCard(room, p, botFaceUp);
         }
       });
@@ -206,6 +207,7 @@ io.on('connection', (socket) => {
 
 function dealCard(room, player, isFaceUp) {
   const card = room.deck.pop();
+  if (!card) return;
   card.isFaceUp = isFaceUp;
   player.cards.push(card);
 
@@ -213,8 +215,10 @@ function dealCard(room, player, isFaceUp) {
     if (room.awaitingQueenFollow) {
       room.followRank = card.rank;
       room.awaitingQueenFollow = false;
+      io.to(room.id).emit('notification', { text: `👑 Queen followed by ${card.rank}! Queens & ${card.rank}s are WILD!` });
     } else if (card.rank === 'Q') {
       room.awaitingQueenFollow = true;
+      io.to(room.id).emit('notification', { text: `👑 Face-up Queen dealt! Next face-up card sets the wild rank!` });
     }
   }
 }
@@ -224,7 +228,6 @@ function startStreetBetting(room, street) {
   room.highestBet = 0;
   room.players.forEach(p => p.currentBet = 0);
 
-  // Highest upcard acts first
   let highestVal = -1;
   let highestIdx = 0;
   room.players.forEach((p, idx) => {
@@ -259,25 +262,53 @@ function triggerTurn(room) {
   }
 
   if (p.isBot) {
-    setTimeout(() => runBotTurn(room, p), 900);
+    setTimeout(() => runBotTurn(room, p), 800);
   } else {
     broadcastState(room.id);
   }
 }
 
+/* Upgraded AI Engine: Smart & Sticky */
 function runBotTurn(room, bot) {
   const toCall = room.highestBet - bot.currentBet;
   const minInc = room.currentStreet >= 5 ? 4 : 2;
+  const hand = evaluate7Cards(bot.cards, room.ruleVariant, room.followRank);
+  const wildCount = bot.cards.filter(c => isWild(c, room.ruleVariant, room.followRank)).length;
+
   let action = 'check';
   let raiseAmt = toCall + minInc;
 
-  if (toCall === 0) {
-    action = (bot.persona === 'aggressive' && Math.random() < 0.6) ? 'raise' : 'check';
-  } else {
-    if (bot.persona === 'calling_station' || Math.random() < 0.88) {
-      action = 'check'; // Call
+  if (bot.persona === 'calling_station') {
+    if (toCall === 0) {
+      action = (hand.score >= 400 && Math.random() < 0.25) ? 'raise' : 'check';
     } else {
-      action = 'fold';
+      action = (toCall > bot.chips) ? 'check' : ((room.currentStreet === 7 && hand.score < 200 && Math.random() < 0.03) ? 'fold' : 'check');
+    }
+  } else if (bot.persona === 'aggressive') {
+    if (toCall === 0) {
+      if (Math.random() < 0.65) {
+        action = 'raise';
+        raiseAmt = Math.min(bot.chips, minInc * (Math.random() < 0.5 ? 2 : 1));
+      } else {
+        action = 'check';
+      }
+    } else {
+      if (Math.random() < 0.45) {
+        action = 'raise';
+        raiseAmt = Math.min(bot.chips, toCall + minInc);
+      } else if (Math.random() < 0.94) {
+        action = 'check';
+      } else {
+        action = (room.currentStreet >= 6 && hand.score < 200) ? 'fold' : 'check';
+      }
+    }
+  } else {
+    // Wild Chaser
+    if (wildCount > 0 || hand.score >= 300) {
+      action = (Math.random() < 0.7) ? 'raise' : 'check';
+      raiseAmt = Math.min(bot.chips, toCall + minInc + (wildCount * 2));
+    } else {
+      action = (toCall === 0) ? ((Math.random() < 0.3) ? 'raise' : 'check') : ((room.currentStreet <= 5 || Math.random() < 0.88) ? 'check' : 'fold');
     }
   }
 
@@ -289,12 +320,16 @@ function applyPlayerAction(room, player, action, raiseAmt = 0) {
 
   if (action === 'fold') {
     player.folded = true;
+    io.to(room.id).emit('notification', { text: `${player.name} folds.` });
   } else if (action === 'check') {
     if (toCall > 0) {
       const amt = Math.min(toCall, player.chips);
       player.chips -= amt;
       player.currentBet += amt;
       room.pot += amt;
+      io.to(room.id).emit('notification', { text: `${player.name} calls $${amt}.` });
+    } else {
+      io.to(room.id).emit('notification', { text: `${player.name} checks.` });
     }
   } else if (action === 'raise') {
     const amt = Math.min(raiseAmt, player.chips);
@@ -303,6 +338,7 @@ function applyPlayerAction(room, player, action, raiseAmt = 0) {
     room.highestBet = player.currentBet;
     room.lastRaiserIndex = room.activeTurnIndex;
     room.pot += amt;
+    io.to(room.id).emit('notification', { text: `💥 ${player.name} raises to $${room.highestBet} (+$${amt})!` });
   }
 
   broadcastState(room.id);
@@ -332,13 +368,14 @@ function advanceStreet(room) {
     room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
     startStreetBetting(room, room.currentStreet);
   } else if (room.currentStreet === 6) {
-    // 7th street prompt
-    room.pendingRiverChoices = new Set(room.players.filter(p => !p.isBot && !p.folded).map(p => p.id));
+    // 7th street (River)
+    const humans = room.players.filter(p => !p.isBot && !p.folded);
+    room.pendingRiverChoices = new Set(humans.map(p => p.id));
     if (room.pendingRiverChoices.size === 0) {
       room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
       startStreetBetting(room, 7);
     } else {
-      io.to(room.id).emit('prompt_river_choice');
+      humans.forEach(h => io.to(h.id).emit('prompt_river_modal'));
       broadcastState(room.id);
     }
   } else {
@@ -372,8 +409,8 @@ function showdown(room) {
   const split = Math.floor(room.pot / winners.length);
   winners.forEach(w => w.chips += split);
   room.pot = 0;
-  room.currentStreet = 8; // Finished
-  broadcastState(room.id, `Showdown! ${winners.map(w => w.name).join(', ')} won with ${bestDesc}!`);
+  room.currentStreet = 8;
+  broadcastState(room.id, `🏆 Showdown! ${winners.map(w => w.name).join(', ')} won with ${bestDesc}!`);
 }
 
 function endHand(room, winner) {
@@ -381,11 +418,10 @@ function endHand(room, winner) {
     winner.chips += room.pot;
     room.pot = 0;
     room.currentStreet = 8;
-    broadcastState(room.id, `${winner.name} won the hand!`);
+    broadcastState(room.id, `🏆 ${winner.name} won $${winner.chips} (Everyone else folded)!`);
   }
 }
 
-// Securely send player cards (masks other players' hidden hole cards)
 function broadcastState(roomId, message = null) {
   const room = rooms[roomId];
   if (!room) return;
@@ -400,13 +436,13 @@ function broadcastState(roomId, message = null) {
       folded: p.folded,
       currentBet: p.currentBet,
       isBot: p.isBot,
+      persona: p.persona,
       handDesc: p.handDesc || '',
       cards: p.cards.map(c => {
-        // If showdown (street 8) OR it's recipient's own card OR face-up: reveal it
         if (room.currentStreet === 8 || p.id === recipient.id || c.isFaceUp) {
           return c;
         }
-        return { isFaceUp: false }; // Masked hole card
+        return { isFaceUp: false };
       })
     }));
 
@@ -426,4 +462,4 @@ function broadcastState(roomId, message = null) {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`));

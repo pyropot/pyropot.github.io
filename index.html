@@ -2,188 +2,467 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>7-Card Stud Multiplayer</title>
+  <title>7-Card Stud Poker Deluxe</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0b1517;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at center, #142327 0%, #080f11 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding: 12px;
+      padding: 10px;
+      overflow-x: hidden;
     }
-    header { text-align: center; margin-bottom: 8px; }
-    h1 { font-size: 1.7rem; color: #f1c40f; }
 
-    /* Lobby Modal Overlay */
-    .modal-overlay {
+    header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      background: linear-gradient(180deg, #f9e79f 0%, #d4ac0d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+
+    /* Modal Framework */
+    .modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 1000;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .lobby-card {
-      background: #162428;
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-box {
+      background: linear-gradient(135deg, #1b2d34 0%, #111d21 100%);
       border: 2px solid #f1c40f;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 24px;
       width: 90%;
-      max-width: 380px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      max-width: 440px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.9), 0 0 25px rgba(241, 196, 15, 0.2);
+      text-align: center;
     }
-    .lobby-card input, .lobby-card select, .lobby-card button {
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #3b535d;
-      background: #243b44;
+    .modal-box h2 {
+      color: #f1c40f;
+      margin-bottom: 12px;
+      font-size: 1.4rem;
+    }
+    .modal-box input, .modal-box select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid #324c57;
+      background: #0d171a;
       color: #fff;
       font-size: 1rem;
     }
-    .lobby-card button {
-      background: #2ecc71;
+    .modal-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
+      color: #fff;
+      font-size: 1.05rem;
       font-weight: bold;
       cursor: pointer;
-      border: none;
+      box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+      transition: all 0.2s;
     }
+    .modal-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-    /* Table & HUD */
+    /* River Card Orientation Cards */
+    .river-choices {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+      justify-content: center;
+    }
+    .river-card-opt {
+      background: #243b44;
+      border: 2px solid #3c6170;
+      border-radius: 12px;
+      padding: 15px;
+      width: 130px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .river-card-opt:hover {
+      border-color: #f1c40f;
+      transform: translateY(-4px);
+      box-shadow: 0 6px 20px rgba(241, 196, 15, 0.3);
+    }
+    .river-card-opt .icon { font-size: 2.2rem; margin-bottom: 6px; }
+    .river-card-opt .label { font-size: 0.9rem; font-weight: bold; }
+
+    /* The Luxury Felt Table */
     .table {
       position: relative;
       width: 96vw;
-      max-width: 1000px;
-      height: 580px;
-      background: radial-gradient(circle, #27ae60 0%, #196f3d 75%, #0d381e 100%);
-      border: 14px solid #4a2d16;
-      border-radius: 220px;
-      box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.9);
+      max-width: 1040px;
+      height: 590px;
+      background: radial-gradient(ellipse at center, #239b56 0%, #196f3d 60%, #0f4024 100%);
+      border: 18px solid #3d2314;
+      border-radius: 240px;
+      box-shadow: inset 0 0 60px rgba(0,0,0,0.85), 0 20px 50px rgba(0,0,0,0.95);
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
-    .center-hud { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 5; }
-    .pot-display {
-      text-align: center; background: rgba(0,0,0,0.65); padding: 6px 18px; border-radius: 14px;
-    }
-    .pot-amount { font-size: 1.4rem; color: #f1c40f; font-weight: bold; }
 
-    /* Compact Wild Cards */
-    .wild-window {
-      background: rgba(18, 30, 36, 0.92); border: 2px solid #f39c12; border-radius: 10px;
-      padding: 4px 10px; text-align: center;
+    .center-pot-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
     }
+    .pot-badge {
+      background: rgba(8, 15, 17, 0.85);
+      border: 1px solid rgba(241, 196, 15, 0.4);
+      padding: 8px 24px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    }
+    .pot-badge .pot-title { font-size: 0.7rem; color: #bbb; letter-spacing: 1px; }
+    .pot-badge .pot-amount { font-size: 1.6rem; color: #f1c40f; font-weight: 900; }
+    .street-tag { font-size: 0.8rem; color: #00d2d3; font-weight: bold; }
+
+    /* Simplified Wild Box */
+    .wild-hud {
+      background: rgba(10, 20, 24, 0.92);
+      border: 1.5px solid #e67e22;
+      border-radius: 8px;
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .wild-hud-title { font-size: 0.65rem; color: #f39c12; font-weight: 900; letter-spacing: 0.5px; }
     .compact-wild-card {
-      background: #fff; color: #111; border-radius: 4px; padding: 2px 6px;
-      display: inline-flex; flex-direction: column; align-items: center; font-weight: bold;
+      background: #fff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-weight: 900;
+      color: #111;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     }
-    .compact-wild-suits { font-size: 0.7rem; display: flex; gap: 2px; }
-    .suit-b { color: #111; } .suit-r { color: #e74c3c; }
+    .compact-wild-suits { font-size: 0.7rem; display: inline-flex; gap: 1px; }
+    .suit-b { color: #111; }
+    .suit-r { color: #e74c3c; }
 
-    /* Player Seats */
+    /* Player Pods */
     .player-seat {
-      position: absolute; background: rgba(15, 25, 30, 0.9); border-radius: 10px;
-      padding: 8px 12px; min-width: 170px; border: 2px solid transparent;
+      position: absolute;
+      background: rgba(13, 23, 27, 0.92);
+      border-radius: 14px;
+      padding: 8px 12px;
+      min-width: 175px;
+      border: 2px solid transparent;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .player-seat.active-turn { border-color: #f1c40f; box-shadow: 0 0 15px #f1c40f; }
-    .player-seat.folded { opacity: 0.35; }
+    .player-seat.active-turn {
+      border-color: #f1c40f;
+      box-shadow: 0 0 20px #f1c40f, inset 0 0 10px rgba(241, 196, 15, 0.3);
+      transform: scale(1.03);
+    }
+    .player-seat.folded {
+      opacity: 0.35;
+      filter: grayscale(1);
+    }
     #seat-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }
     #seat-1 { left: 15px; top: 44%; transform: translateY(-50%); }
     #seat-2 { top: 12px; left: 50%; transform: translateX(-50%); }
     #seat-3 { right: 15px; top: 44%; transform: translateY(-50%); }
 
-    .cards-row { display: flex; gap: 4px; margin-top: 4px; min-height: 46px; }
+    .seat-header { display: flex; justify-content: space-between; align-items: center; }
+    .seat-name { font-size: 0.85rem; font-weight: bold; }
+    .seat-chips { font-size: 0.85rem; color: #2ecc71; font-weight: 900; }
+    .seat-badge { font-size: 0.65rem; color: #f39c12; font-weight: 600; margin-bottom: 4px; }
+    .seat-status { font-size: 0.75rem; color: #3498db; min-height: 15px; font-weight: 600; }
+
+    /* Cards */
+    .cards-row { display: flex; gap: 4px; margin-top: 4px; min-height: 48px; }
     .card {
-      width: 32px; height: 46px; background: #fff; border-radius: 4px; color: #111;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: bold; position: relative;
+      width: 32px;
+      height: 46px;
+      background: #fff;
+      border-radius: 4px;
+      color: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      position: relative;
+      animation: dealSlide 0.25s ease-out;
+    }
+    @keyframes dealSlide {
+      from { transform: translateY(-15px) scale(0.8); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
     }
     .card.red { color: #e74c3c; }
-    .card.back { background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 5px, #34495e 5px, #34495e 10px); color: transparent; }
-    .card.is-wild::after { content: '★'; position: absolute; top: -5px; right: -2px; color: #e67e22; }
-
-    /* Controls */
-    .control-dock {
-      display: flex; gap: 10px; background: #162428; padding: 10px 18px; border-radius: 10px; align-items: center;
+    .card.back {
+      background: repeating-linear-gradient(45deg, #1c2833, #1c2833 5px, #273746 5px, #273746 10px);
+      border: 1px solid #111;
+      color: transparent;
     }
-    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    .btn-fold { background: #e74c3c; color: #fff; }
-    .btn-check { background: #3498db; color: #fff; }
-    .btn-raise { background: #2ecc71; color: #fff; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .card.is-wild::after {
+      content: '★';
+      position: absolute;
+      top: -5px; right: -2px;
+      color: #f39c12;
+      font-size: 11px;
+    }
 
-    /* Log */
+    /* Action Control Dock */
+    .control-dock {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #142226;
+      border: 1px solid #23383f;
+      padding: 10px 18px;
+      border-radius: 14px;
+      align-items: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      width: 96vw;
+      max-width: 1040px;
+      justify-content: space-between;
+    }
+    .action-group-left { display: flex; gap: 8px; }
+    .action-group-right { display: flex; gap: 10px; align-items: center; }
+
+    .btn {
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 900;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-fold { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); color: #fff; }
+    .btn-check { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); color: #fff; }
+    .btn-raise { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); color: #fff; }
+    .btn-start { background: linear-gradient(180deg, #f1c40f 0%, #d4ac0d 100%); color: #000; }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
+
+    .slider-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0d1719;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .slider-box input[type="range"] { cursor: pointer; }
+    .preset-btn {
+      background: #233b44;
+      border: 1px solid #375b68;
+      color: #eee;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* Live Game Commentary Log */
     .game-log {
-      width: 96vw; max-width: 1000px; background: #101c1f; border-radius: 8px;
-      padding: 6px 12px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #aaa; margin-top: 8px;
+      width: 96vw;
+      max-width: 1040px;
+      background: #0d1719;
+      border-radius: 8px;
+      padding: 8px 14px;
+      height: 65px;
+      overflow-y: auto;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 0.8rem;
+      color: #bdc3c7;
+      margin-top: 8px;
+      border: 1px solid #1f343c;
     }
   </style>
 </head>
 <body>
 
-  <!-- Lobby Screen Modal -->
-  <div class="modal-overlay" id="lobbyModal">
-    <div class="lobby-card">
-      <h2 style="color:#f1c40f; text-align:center;">Multiplayer Stud</h2>
-      <input type="text" id="playerNameInput" placeholder="Your Name" value="Player">
-      <input type="text" id="roomIdInput" placeholder="Room Code (e.g. room1)" value="room1">
+  <!-- Lobby Setup Modal -->
+  <div class="modal-backdrop" id="lobbyModal">
+    <div class="modal-box">
+      <h2>♠ 7-Card Stud Multiplayer ♠</h2>
+      <input type="text" id="playerNameInput" placeholder="Your Player Name" value="Hero">
+      <input type="text" id="roomIdInput" placeholder="Room Code" value="vegas-vip">
       <select id="ruleVariantInput">
-        <option value="standard">Standard Rules</option>
-        <option value="deuces">Deuces Wild (2s Wild)</option>
-        <option value="follow">Follow the Queen</option>
+        <option value="standard">Standard Stud (No Wilds)</option>
+        <option value="deuces">Deuces Wild (2s Are Wild)</option>
+        <option value="follow">Follow the Queen (Queens & Follower Wild)</option>
       </select>
-      <button onclick="joinRoom()">Join / Create Room</button>
+      <button class="modal-btn" onclick="joinLobby()">Enter Casino</button>
+    </div>
+  </div>
+
+  <!-- River Face-Up / Face-Down Choice Modal -->
+  <div class="modal-backdrop" id="riverModal" style="display:none;">
+    <div class="modal-box">
+      <h2>🌊 7th Street (The River)</h2>
+      <p style="color:#ccc; font-size:0.9rem;">Choose how to receive your final card:</p>
+      <div class="river-choices">
+        <div class="river-card-opt" onclick="chooseRiver(false)">
+          <div class="icon">🔒</div>
+          <div class="label">Face Down</div>
+          <span style="font-size:0.7rem; color:#aaa;">Secret Card</span>
+        </div>
+        <div class="river-card-opt" onclick="chooseRiver(true)">
+          <div class="icon">👁️</div>
+          <div class="label">Face Up</div>
+          <span style="font-size:0.7rem; color:#aaa;">Exposed Card</span>
+        </div>
+      </div>
     </div>
   </div>
 
   <header>
-    <h1>7-Card Stud Multiplayer</h1>
+    <h1>7-CARD STUD POKER</h1>
   </header>
 
-  <!-- Table View -->
+  <!-- Felt Table -->
   <div class="table">
-    <div class="center-hud">
-      <div class="pot-display">
+    <div class="center-pot-area">
+      <div class="pot-badge">
+        <div class="pot-title">TOTAL POT</div>
         <div class="pot-amount" id="potText">$0</div>
-        <div style="font-size:0.75rem; color:#00d2d3;" id="streetText">Waiting to Start</div>
       </div>
-      <div class="wild-window">
-        <div style="font-size:0.65rem; color:#f1c40f; font-weight:bold;">WILD CARDS</div>
-        <div id="wildCardsList" style="display:flex; gap:6px; justify-content:center;">None</div>
+      <div class="street-tag" id="streetText">Waiting for Players...</div>
+      <div class="wild-hud">
+        <span class="wild-hud-title">WILDS:</span>
+        <div id="wildCardsContainer" style="display:flex; gap:4px;"><span style="font-size:0.75rem; color:#888;">None</span></div>
       </div>
-      <button id="startHandBtn" onclick="startHand()" style="padding:6px 12px; background:#f1c40f; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">Start Hand (+Bots)</button>
     </div>
 
-    <!-- 4 Player Seats -->
-    <div class="player-seat" id="seat-0"><div class="player-name" id="name-0">Empty</div><div id="chips-0">$0</div><div id="status-0" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-0"></div></div>
-    <div class="player-seat" id="seat-1"><div class="player-name" id="name-1">Empty</div><div id="chips-1">$0</div><div id="status-1" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-1"></div></div>
-    <div class="player-seat" id="seat-2"><div class="player-name" id="name-2">Empty</div><div id="chips-2">$0</div><div id="status-2" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-2"></div></div>
-    <div class="player-seat" id="seat-3"><div class="player-name" id="name-3">Empty</div><div id="chips-3">$0</div><div id="status-3" style="font-size:0.75rem; color:#f39c12;"></div><div class="cards-row" id="cards-3"></div></div>
+    <!-- Seats -->
+    <div class="player-seat" id="seat-0">
+      <div class="seat-header"><span class="seat-name" id="name-0">Empty</span><span class="seat-chips" id="chips-0">$0</span></div>
+      <div class="seat-badge" id="badge-0">👑 Table Captain</div>
+      <div class="seat-status" id="status-0"></div>
+      <div class="cards-row" id="cards-0"></div>
+    </div>
+
+    <div class="player-seat" id="seat-1">
+      <div class="seat-header"><span class="seat-name" id="name-1">Empty</span><span class="seat-chips" id="chips-1">$0</span></div>
+      <div class="seat-badge" id="badge-1">🛡️ Calling Station</div>
+      <div class="seat-status" id="status-1"></div>
+      <div class="cards-row" id="cards-1"></div>
+    </div>
+
+    <div class="player-seat" id="seat-2">
+      <div class="seat-header"><span class="seat-name" id="name-2">Empty</span><span class="seat-chips" id="chips-2">$0</span></div>
+      <div class="seat-badge" id="badge-2">⚡ Aggressive Bluffer</div>
+      <div class="seat-status" id="status-2"></div>
+      <div class="cards-row" id="cards-2"></div>
+    </div>
+
+    <div class="player-seat" id="seat-3">
+      <div class="seat-header"><span class="seat-name" id="name-3">Empty</span><span class="seat-chips" id="chips-3">$0</span></div>
+      <div class="seat-badge" id="badge-3">🎲 Wild Gambler</div>
+      <div class="seat-status" id="status-3"></div>
+      <div class="cards-row" id="cards-3"></div>
+    </div>
   </div>
 
   <!-- Actions -->
   <div class="control-dock">
-    <button class="btn btn-fold" id="btnFold" onclick="sendAction('fold')" disabled>Fold</button>
-    <button class="btn btn-check" id="btnCheck" onclick="sendAction('check')" disabled>Check</button>
-    <button class="btn btn-raise" id="btnRaise" onclick="sendAction('raise')" disabled>Bet $2</button>
+    <div class="action-group-left">
+      <button class="btn btn-fold" id="btnFold" onclick="sendAction('fold')" disabled>Fold</button>
+      <button class="btn btn-check" id="btnCheck" onclick="sendAction('check')" disabled>Check</button>
+    </div>
+
+    <div class="action-group-right">
+      <div class="slider-box">
+        <span style="font-size:0.85rem; font-weight:bold;">Bet:</span>
+        <input type="range" id="raiseSlider" min="2" max="100" value="2" oninput="syncSlider(this.value)" disabled>
+        <span id="sliderValText" style="font-size:0.9rem; font-weight:bold; color:#2ecc71; min-width:35px;">$2</span>
+        <button class="preset-btn" onclick="presetRaise('min')">Min</button>
+        <button class="preset-btn" onclick="presetRaise('2x')">2x</button>
+        <button class="preset-btn" onclick="presetRaise('pot')">Pot</button>
+        <button class="preset-btn" onclick="presetRaise('max')">Max</button>
+      </div>
+
+      <button class="btn btn-raise" id="btnRaise" onclick="sendAction('raise')" disabled>Bet $2</button>
+      <button class="btn btn-start" id="btnStart" onclick="startHand()">Deal Hand (+Bots)</button>
+    </div>
   </div>
 
-  <div class="game-log" id="gameLog"><p>Connecting...</p></div>
+  <div class="game-log" id="gameLog"><p>Connecting to Poker Server...</p></div>
 
 <script>
-  const SERVER_URL = "https://pyropot-github-io.onrender.com/"; 
+  /* ================= AUDIO FX SYNTHESIZER ================= */
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'deal') {
+      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+    } else if (type === 'chip') {
+      osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.06);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.06);
+    } else if (type === 'win') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+    }
+  }
+
+  /* ================= NETWORKING ================= */
+  // REPLACE THIS WITH YOUR RENDER URL:
+  const SERVER_URL = "https://poker-server-xxxx.onrender.com"; 
 
   const socket = io(SERVER_URL);
   let currentRoomId = '';
   let myPlayerName = '';
+  let lastState = null;
 
   function log(msg) {
     const logBox = document.getElementById('gameLog');
@@ -192,60 +471,83 @@
     logBox.prepend(p);
   }
 
-  function joinRoom() {
+  function joinLobby() {
     myPlayerName = document.getElementById('playerNameInput').value || 'Hero';
-    currentRoomId = document.getElementById('roomIdInput').value || 'room1';
+    currentRoomId = document.getElementById('roomIdInput').value || 'vegas-vip';
     const rule = document.getElementById('ruleVariantInput').value;
 
     socket.emit('join_room', { roomId: currentRoomId, playerName: myPlayerName, ruleVariant: rule });
     document.getElementById('lobbyModal').style.display = 'none';
-    log(`Joined Room: <b>${currentRoomId}</b> as <b>${myPlayerName}</b>`);
+    log(`Entered Room: <b>${currentRoomId}</b> as <b>${myPlayerName}</b>`);
   }
 
   function startHand() {
     socket.emit('start_hand', { roomId: currentRoomId, fillBots: true });
+    playSound('chip');
   }
 
   function sendAction(action) {
-    socket.emit('take_action', { roomId: currentRoomId, action, raiseAmt: 4 });
+    const raiseVal = parseInt(document.getElementById('raiseSlider').value, 10);
+    socket.emit('take_action', { roomId: currentRoomId, action, raiseAmt: raiseVal });
+    playSound('chip');
   }
 
-  socket.on('prompt_river_choice', () => {
-    const choice = confirm("7th Street: Click OK for Face-Up 👁️, or Cancel for Face-Down 🔒");
-    socket.emit('river_choice', { roomId: currentRoomId, faceUp: choice });
+  /* River Choice Modal Event */
+  socket.on('prompt_river_modal', () => {
+    document.getElementById('riverModal').style.display = 'flex';
+  });
+
+  function chooseRiver(faceUp) {
+    document.getElementById('riverModal').style.display = 'none';
+    socket.emit('river_choice', { roomId: currentRoomId, faceUp });
+    playSound('deal');
+  }
+
+  socket.on('notification', (data) => {
+    log(data.text);
   });
 
   socket.on('game_state', (state) => {
+    lastState = state;
+    playSound('deal');
     document.getElementById('potText').innerText = `$${state.pot}`;
-    
+
+    const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)', 8: 'Showdown' };
+    document.getElementById('streetText').innerText = streetNames[state.currentStreet] || 'In Lobby';
+
     // Update Wilds Window
-    const wildList = document.getElementById('wildCardsList');
-    wildList.innerHTML = '';
+    const wildContainer = document.getElementById('wildCardsContainer');
+    wildContainer.innerHTML = '';
     let wildRanks = [];
     if (state.ruleVariant === 'deuces') wildRanks = ['2'];
     if (state.ruleVariant === 'follow') {
       wildRanks.push('Q');
       if (state.followRank) wildRanks.push(state.followRank);
     }
-    if (wildRanks.length === 0) wildList.innerText = 'None';
-    else {
+
+    if (wildRanks.length === 0) {
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">None</span>';
+    } else {
       wildRanks.forEach(r => {
         const c = document.createElement('div');
         c.className = 'compact-wild-card';
-        c.innerHTML = `<div>${r}</div><div class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></div>`;
-        wildList.appendChild(c);
+        c.innerHTML = `<span>${r}</span><span class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></span>`;
+        wildContainer.appendChild(c);
       });
     }
 
-    // Render Players
+    // Render Seats
     state.players.forEach((p, idx) => {
       document.getElementById(`name-${idx}`).innerText = p.name;
       document.getElementById(`chips-${idx}`).innerText = `$${p.chips}`;
       document.getElementById(`status-${idx}`).innerText = p.handDesc || (p.folded ? 'Folded' : '');
-      
+
       const seat = document.getElementById(`seat-${idx}`);
-      if (idx === state.activeTurnIndex) seat.classList.add('active-turn');
+      if (idx === state.activeTurnIndex && state.currentStreet < 8) seat.classList.add('active-turn');
       else seat.classList.remove('active-turn');
+
+      if (p.folded) seat.classList.add('folded');
+      else seat.classList.remove('folded');
 
       const cardBox = document.getElementById(`cards-${idx}`);
       cardBox.innerHTML = '';
@@ -263,17 +565,59 @@
       });
     });
 
-    // Toggle Buttons if it's my turn
+    // Control buttons & turn handling
     const activePlayer = state.players[state.activeTurnIndex];
-    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded;
+    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded && state.currentStreet < 8;
 
     document.getElementById('btnFold').disabled = !isMyTurn;
     document.getElementById('btnCheck').disabled = !isMyTurn;
     document.getElementById('btnRaise').disabled = !isMyTurn;
+    document.getElementById('raiseSlider').disabled = !isMyTurn;
 
-    if (state.message) log(state.message);
+    if (isMyTurn) {
+      const toCall = state.highestBet - activePlayer.currentBet;
+      document.getElementById('btnCheck').innerText = toCall > 0 ? `Call $${toCall}` : 'Check';
+
+      const minInc = state.currentStreet >= 5 ? 4 : 2;
+      const minLegal = Math.min(activePlayer.chips, toCall + minInc);
+      const slider = document.getElementById('raiseSlider');
+      slider.min = minLegal;
+      slider.max = activePlayer.chips;
+      slider.value = minLegal;
+      syncSlider(minLegal);
+    }
+
+    if (state.message) {
+      log(state.message);
+      if (state.currentStreet === 8) playSound('win');
+    }
   });
-</script>
 
+  function syncSlider(val) {
+    document.getElementById('sliderValText').innerText = `$${val}`;
+    document.getElementById('btnRaise').innerText = `Bet $${val}`;
+  }
+
+  function presetRaise(type) {
+    if (!lastState) return;
+    const hero = lastState.players.find(p => p.id === socket.id);
+    if (!hero) return;
+
+    const toCall = lastState.highestBet - hero.currentBet;
+    const minInc = lastState.currentStreet >= 5 ? 4 : 2;
+    const minLegal = toCall + minInc;
+    const slider = document.getElementById('raiseSlider');
+
+    let target = minLegal;
+    if (type === 'min') target = minLegal;
+    if (type === '2x') target = minLegal * 2;
+    if (type === 'pot') target = Math.max(minLegal, lastState.pot);
+    if (type === 'max') target = hero.chips;
+
+    target = Math.min(hero.chips, Math.max(minLegal, target));
+    slider.value = target;
+    syncSlider(target);
+  }
+</script>
 </body>
 </html>
