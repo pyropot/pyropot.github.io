@@ -9,10 +9,7 @@ app.use(cors());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { 
-    origin: process.env.CORS_ORIGIN || '*', 
-    methods: ['GET', 'POST'] 
-  }
+  cors: { origin: process.env.CORS_ORIGIN || '*', methods: ['GET', 'POST'] }
 });
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -21,6 +18,22 @@ const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '1
 const ANTE = 1;
 
 const rooms = {};
+
+function getPublicRooms() {
+  return Object.values(rooms).map(r => ({
+    id: r.id,
+    name: r.name,
+    ruleVariant: r.ruleVariant,
+    playerCount: r.players.length,
+    humanCount: r.players.filter(p => !p.isBot).length,
+    status: r.status, // 'waiting' or 'playing'
+    hostName: r.players.find(p => p.id === r.hostId)?.name || 'Host'
+  }));
+}
+
+function broadcastRoomsList() {
+  io.to('lobby').emit('rooms_list', getPublicRooms());
+}
 
 function createDeck() {
   const deck = [];
@@ -75,55 +88,91 @@ function evaluate7Cards(cards, ruleVariant, followRank) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('join_room', ({ roomId, playerName, ruleVariant }) => {
-    socket.join(roomId);
-    if (!rooms[roomId]) {
-      rooms[roomId] = {
-        id: roomId,
-        host: socket.id,
-        ruleVariant: ruleVariant || 'standard',
-        players: [],
-        deck: [],
-        pot: 0,
-        currentStreet: 0,
-        activeTurnIndex: 0,
-        highestBet: 0,
-        lastRaiserIndex: -1,
-        followRank: null,
-        awaitingQueenFollow: false,
-        gameStarted: false,
-        pendingRiverChoices: new Set()
-      };
-    }
+  socket.join('lobby');
+  socket.emit('rooms_list', getPublicRooms());
 
-    const room = rooms[roomId];
-    if (room.players.length < 4 && !room.players.some(p => p.id === socket.id)) {
-      room.players.push({
+  // Create Table
+  socket.on('create_room', ({ tableName, playerName, ruleVariant }) => {
+    const roomId = 'table_' + Math.random().toString(36).substr(2, 6);
+    rooms[roomId] = {
+      id: roomId,
+      name: tableName || `Table ${Object.keys(rooms).length + 1}`,
+      hostId: socket.id,
+      ruleVariant: ruleVariant || 'standard',
+      status: 'waiting',
+      players: [{
         id: socket.id,
-        name: playerName || `Player ${room.players.length + 1}`,
+        name: playerName || 'Host',
         chips: 100,
         cards: [],
         folded: false,
         currentBet: 0,
         isBot: false,
         persona: 'hero'
-      });
-    }
+      }],
+      deck: [],
+      pot: 0,
+      currentStreet: 0,
+      activeTurnIndex: 0,
+      highestBet: 0,
+      lastRaiserIndex: -1,
+      followRank: null,
+      awaitingQueenFollow: false,
+      pendingRiverChoices: new Set()
+    };
 
+    socket.leave('lobby');
+    socket.join(roomId);
+    socket.emit('joined_room', { roomId });
     broadcastState(roomId);
+    broadcastRoomsList();
   });
 
-  socket.on('start_hand', ({ roomId, fillBots, ruleVariant }) => {
+  // Join Existing Table
+  socket.on('join_room', ({ roomId, playerName }) => {
     const room = rooms[roomId];
-    if (!room) return;
+    if (!room) {
+      socket.emit('error_msg', 'Table not found!');
+      return;
+    }
+    if (room.players.length >= 4) {
+      socket.emit('error_msg', 'Table is full (4/4 Players)!');
+      return;
+    }
 
-    if (ruleVariant) room.ruleVariant = ruleVariant;
+    room.players.push({
+      id: socket.id,
+      name: playerName || `Player ${room.players.length + 1}`,
+      chips: 100,
+      cards: [],
+      folded: false,
+      currentBet: 0,
+      isBot: false,
+      persona: 'hero'
+    });
+
+    socket.leave('lobby');
+    socket.join(roomId);
+    socket.emit('joined_room', { roomId });
+    broadcastState(roomId);
+    broadcastRoomsList();
+  });
+
+  // Leave Table
+  socket.on('leave_room', ({ roomId }) => {
+    leaveTable(socket, roomId);
+  });
+
+  // Start Hand
+  socket.on('start_hand', ({ roomId, fillBots }) => {
+    const room = rooms[roomId];
+    if (!room || room.hostId !== socket.id) return;
 
     if (fillBots) {
       const botPool = [
-        { name: 'Alex', persona: 'aggressive' },
-        { name: 'Sam', persona: 'calling_station' },
-        { name: 'Jordan', persona: 'wild_chaser' }
+        { name: 'Alex (Aggro)', persona: 'aggressive' },
+        { name: 'Sam (Station)', persona: 'calling_station' },
+        { name: 'Jordan (Gambler)', persona: 'wild_chaser' }
       ];
       while (room.players.length < 4) {
         const botConfig = botPool[room.players.length - 1] || { name: `Bot ${room.players.length}`, persona: 'aggressive' };
@@ -140,11 +189,16 @@ io.on('connection', (socket) => {
       }
     }
 
+    if (room.players.length < 2) {
+      socket.emit('error_msg', 'Need at least 2 players or bots to deal hand!');
+      return;
+    }
+
+    room.status = 'playing';
     room.deck = createDeck();
     room.pot = 0;
     room.followRank = null;
     room.awaitingQueenFollow = false;
-    room.gameStarted = true;
     room.currentStreet = 3;
 
     room.players.forEach(p => {
@@ -158,24 +212,27 @@ io.on('connection', (socket) => {
       }
     });
 
-    // 3rd Street: 2 face-down, 1 face-up
+    // Deal 3rd Street (2 down, 1 up)
     for (let i = 0; i < 2; i++) {
       room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
     }
     room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
 
+    broadcastRoomsList();
     startStreetBetting(room, 3);
   });
 
+  // Betting Action
   socket.on('take_action', ({ roomId, action, raiseAmt }) => {
     const room = rooms[roomId];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const player = room.players[room.activeTurnIndex];
     if (!player || player.id !== socket.id) return;
 
     applyPlayerAction(room, player, action, raiseAmt);
   });
 
+  // 7th Street River Choice
   socket.on('river_choice', ({ roomId, faceUp }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -201,12 +258,34 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     for (const rid in rooms) {
-      const room = rooms[rid];
-      room.players = room.players.filter(p => p.id !== socket.id);
-      broadcastState(rid);
+      if (rooms[rid].players.some(p => p.id === socket.id)) {
+        leaveTable(socket, rid);
+      }
     }
   });
 });
+
+function leaveTable(socket, roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  socket.leave(roomId);
+  socket.join('lobby');
+  room.players = room.players.filter(p => p.id !== socket.id);
+
+  const humanPlayers = room.players.filter(p => !p.isBot);
+  if (humanPlayers.length === 0) {
+    delete rooms[roomId];
+  } else {
+    if (room.hostId === socket.id) {
+      room.hostId = humanPlayers[0].id;
+    }
+    broadcastState(roomId);
+  }
+
+  socket.emit('left_room');
+  broadcastRoomsList();
+}
 
 function dealCard(room, player, isFaceUp) {
   const card = room.deck.pop();
@@ -259,6 +338,7 @@ function triggerTurn(room) {
   }
 
   const p = room.players[room.activeTurnIndex];
+  if (!p) return;
   if (p.folded) {
     advanceTurn(room);
     return;
@@ -410,7 +490,9 @@ function showdown(room) {
   winners.forEach(w => w.chips += split);
   room.pot = 0;
   room.currentStreet = 8;
+  room.status = 'waiting';
   broadcastState(room.id, `🏆 Showdown! ${winners.map(w => w.name).join(', ')} won with ${bestDesc}!`);
+  broadcastRoomsList();
 }
 
 function endHand(room, winner) {
@@ -418,7 +500,9 @@ function endHand(room, winner) {
     winner.chips += room.pot;
     room.pot = 0;
     room.currentStreet = 8;
-    broadcastState(room.id, `🏆 ${winner.name} won $${winner.chips} (Everyone else folded)!`);
+    room.status = 'waiting';
+    broadcastState(room.id, `🏆 ${winner.name} won the pot (Everyone else folded)!`);
+    broadcastRoomsList();
   }
 }
 
@@ -448,6 +532,9 @@ function broadcastState(roomId, message = null) {
 
     io.to(recipient.id).emit('game_state', {
       roomId: room.id,
+      tableName: room.name,
+      hostId: room.hostId,
+      status: room.status,
       players: sanitizedPlayers,
       pot: room.pot,
       currentStreet: room.currentStreet,
