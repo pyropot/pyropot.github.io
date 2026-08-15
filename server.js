@@ -26,7 +26,7 @@ function getPublicRooms() {
     ruleVariant: r.ruleVariant,
     playerCount: r.players.length,
     humanCount: r.players.filter(p => !p.isBot).length,
-    status: r.status, // 'waiting' or 'playing'
+    status: r.status,
     hostName: r.players.find(p => p.id === r.hostId)?.name || 'Host'
   }));
 }
@@ -49,49 +49,219 @@ function createDeck() {
   return deck;
 }
 
-function isWild(card, ruleVariant, followRank) {
+/* ================= EXACT WILD CARD CHECKER ================= */
+function isWild(card, ruleVariant, followRank, playerLowHoleRank = null) {
   if (!card || !card.rank) return false;
+
   if (ruleVariant === 'deuces' && card.rank === '2') return true;
+
   if (ruleVariant === 'follow') {
     if (card.rank === 'Q') return true;
     if (followRank && card.rank === followRank) return true;
   }
+
+  if (ruleVariant === 'seven_makes') {
+    // 7s are wild
+    if (card.rank === '7') return true;
+    if (card.isSevenPairWild) return true;
+  }
+
+  if (ruleVariant === 'low_hole') {
+    if (playerLowHoleRank && card.rank === playerLowHoleRank) return true;
+  }
+
   return false;
 }
 
-function evaluate7Cards(cards, ruleVariant, followRank) {
-  const wildCards = cards.filter(c => isWild(c, ruleVariant, followRank));
-  const naturalCards = cards.filter(c => !isWild(c, ruleVariant, followRank));
-  const wildCount = wildCards.length;
-
-  const rankCounts = {};
-  naturalCards.forEach(c => rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1);
-  const counts = Object.values(rankCounts).sort((a,b) => b - a);
-  const topCount = counts[0] || 0;
-  const effectiveSameKind = topCount + wildCount;
-
-  if (effectiveSameKind >= 5) return { score: 1000, desc: '5 of a Kind' };
-  if (effectiveSameKind >= 4) return { score: 800, desc: '4 of a Kind' };
-  if ((topCount >= 3 && counts[1] >= 2) || (topCount === 2 && counts[1] === 2 && wildCount >= 1) || (topCount >= 3 && wildCount >= 1)) {
-    return { score: 700, desc: 'Full House' };
-  }
-  const suitCounts = {};
-  naturalCards.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1);
-  const maxSuit = Math.max(...Object.values(suitCounts), 0);
-  if (maxSuit + wildCount >= 5) return { score: 600, desc: 'Flush' };
-  if (effectiveSameKind >= 3) return { score: 400, desc: '3 of a Kind' };
-  if (counts[0] >= 2 && counts[1] >= 2) return { score: 300, desc: 'Two Pair' };
-  if (effectiveSameKind >= 2) return { score: 200, desc: 'One Pair' };
-
-  const highest = Math.max(...cards.map(c => c.value), 0);
-  return { score: 100 + highest, desc: 'High Card' };
+function getPlayerLowHoleRank(player) {
+  const holeCards = player.cards.filter(c => !c.isFaceUp);
+  if (!holeCards.length) return null;
+  const lowestVal = Math.min(...holeCards.map(c => c.value));
+  const card = holeCards.find(c => c.value === lowestVal);
+  return card ? card.rank : null;
 }
 
+/* Tag pairs summing to 7 for "Seven and What Makes It" (A=1 + 6=7, 2+5=7, 3+4=7) */
+function applySevenAndWhatMakesIt(cards) {
+  // Clear tags
+  cards.forEach(c => c.isSevenPairWild = false);
+  const pairPairs = [ [14, 6], [2, 5], [3, 4] ]; // A is 14 -> value 1 in sum with 6
+
+  pairPairs.forEach(([r1, r2]) => {
+    const c1 = cards.find(c => (c.value === r1 || (r1===14 && c.rank==='A')) && !c.isSevenPairWild && c.rank !== '7');
+    const c2 = cards.find(c => c.value === r2 && !c.isSevenPairWild && c.rank !== '7');
+    if (c1 && c2 && c1 !== c2) {
+      c1.isSevenPairWild = true;
+      c2.isSevenPairWild = true;
+    }
+  });
+}
+
+/* ================= 7-CARD COMBINATORIAL HAND EVALUATOR ================= */
+function combinations(arr, k) {
+  if (k === 0) return [[]];
+  if (arr.length === 0) return [];
+  const head = arr[0];
+  const tail = arr.slice(1);
+  const withHead = combinations(tail, k - 1).map(c => [head, ...c]);
+  const withoutHead = combinations(tail, k);
+  return [...withHead, ...withoutHead];
+}
+
+function evaluate5CardCombo(fiveCards, ruleVariant, followRank, lowHoleRank) {
+  const wilds = fiveCards.filter(c => isWild(c, ruleVariant, followRank, lowHoleRank));
+  const naturals = fiveCards.filter(c => !isWild(c, ruleVariant, followRank, lowHoleRank));
+  const W = wilds.length;
+
+  if (W === 5) {
+    return { score: 10000000 + 14, desc: 'Five of a Kind (Aces)' };
+  }
+
+  // 1. FIVE OF A KIND
+  const rankMap = {};
+  naturals.forEach(c => rankMap[c.value] = (rankMap[c.value] || 0) + 1);
+  const distinctRanks = Object.keys(rankMap).map(Number).sort((a,b) => b - a);
+
+  for (let r of distinctRanks) {
+    if (rankMap[r] + W >= 5) {
+      return { score: 10000000 + r, desc: `Five of a Kind` };
+    }
+  }
+
+  // 2. STRAIGHT FLUSH & FLUSH
+  const suitMap = {};
+  naturals.forEach(c => {
+    suitMap[c.suit] = suitMap[c.suit] || [];
+    suitMap[c.suit].push(c.value);
+  });
+
+  let bestStraightFlush = null;
+  for (let suit of SUITS) {
+    const suitVals = suitMap[suit] || [];
+    if (suitVals.length + W >= 5) {
+      // Check straight flush
+      const sfHigh = getStraightHighRank(suitVals, W);
+      if (sfHigh) {
+        if (!bestStraightFlush || sfHigh > bestStraightFlush) bestStraightFlush = sfHigh;
+      }
+    }
+  }
+  if (bestStraightFlush) {
+    return { score: 9000000 + bestStraightFlush, desc: bestStraightFlush === 14 ? 'Royal Flush' : 'Straight Flush' };
+  }
+
+  // 3. FOUR OF A KIND
+  for (let r of distinctRanks) {
+    if (rankMap[r] + W >= 4) {
+      return { score: 8000000 + r, desc: 'Four of a Kind' };
+    }
+  }
+
+  // 4. FULL HOUSE
+  for (let r1 of distinctRanks) {
+    const neededForTrip = Math.max(0, 3 - rankMap[r1]);
+    if (neededForTrip <= W) {
+      const remainingWilds = W - neededForTrip;
+      for (let r2 of distinctRanks) {
+        if (r2 !== r1) {
+          const neededForPair = Math.max(0, 2 - rankMap[r2]);
+          if (neededForPair <= remainingWilds) {
+            return { score: 7000000 + (r1 * 100) + r2, desc: 'Full House' };
+          }
+        }
+      }
+      if (remainingWilds >= 2 && distinctRanks.length === 1) {
+        return { score: 7000000 + (r1 * 100) + 14, desc: 'Full House' };
+      }
+    }
+  }
+
+  // 5. FLUSH
+  for (let suit of SUITS) {
+    const sCards = suitMap[suit] || [];
+    if (sCards.length + W >= 5) {
+      const sorted = [...sCards].sort((a,b) => b - a);
+      return { score: 6000000 + (sorted[0] || 14), desc: 'Flush' };
+    }
+  }
+
+  // 6. STRAIGHT
+  const allNatValues = naturals.map(c => c.value);
+  const straightHigh = getStraightHighRank(allNatValues, W);
+  if (straightHigh) {
+    return { score: 5000000 + straightHigh, desc: `${straightHigh}-High Straight` };
+  }
+
+  // 7. THREE OF A KIND
+  for (let r of distinctRanks) {
+    if (rankMap[r] + W >= 3) {
+      return { score: 4000000 + r, desc: 'Three of a Kind' };
+    }
+  }
+
+  // 8. TWO PAIR
+  if (distinctRanks.length >= 2) {
+    if (rankMap[distinctRanks[0]] >= 2 && rankMap[distinctRanks[1]] >= 2) {
+      return { score: 3000000 + (distinctRanks[0]*100) + distinctRanks[1], desc: 'Two Pair' };
+    }
+  }
+
+  // 9. ONE PAIR
+  for (let r of distinctRanks) {
+    if (rankMap[r] + W >= 2) {
+      return { score: 2000000 + r, desc: 'One Pair' };
+    }
+  }
+
+  // 10. HIGH CARD
+  const topVal = naturals.length ? Math.max(...naturals.map(c => c.value)) : 14;
+  return { score: 1000000 + topVal, desc: 'High Card' };
+}
+
+function getStraightHighRank(valuesList, wildCount) {
+  const uniq = Array.from(new Set(valuesList));
+  if (uniq.includes(14)) uniq.push(1); // Ace low support (A-2-3-4-5)
+
+  for (let high = 14; high >= 5; high--) {
+    let missing = 0;
+    for (let needed = high; needed >= high - 4; needed--) {
+      if (!uniq.includes(needed)) {
+        missing++;
+      }
+    }
+    if (missing <= wildCount) {
+      return high;
+    }
+  }
+  return null;
+}
+
+function evaluateBest7CardHand(cards, ruleVariant, followRank, lowHoleRank) {
+  if (!cards || cards.length < 5) {
+    return { score: 0, desc: 'Incomplete Hand' };
+  }
+
+  if (ruleVariant === 'seven_makes') {
+    applySevenAndWhatMakesIt(cards);
+  }
+
+  const all5Combos = combinations(cards, 5);
+  let best = { score: -1, desc: 'High Card' };
+
+  for (let combo of all5Combos) {
+    const res = evaluate5CardCombo(combo, ruleVariant, followRank, lowHoleRank);
+    if (res.score > best.score) {
+      best = res;
+    }
+  }
+  return best;
+}
+
+/* ================= SERVER SOCKET LOGIC ================= */
 io.on('connection', (socket) => {
   socket.join('lobby');
   socket.emit('rooms_list', getPublicRooms());
 
-  // Create Table
   socket.on('create_room', ({ tableName, playerName, ruleVariant }) => {
     const roomId = 'table_' + Math.random().toString(36).substr(2, 6);
     rooms[roomId] = {
@@ -118,7 +288,8 @@ io.on('connection', (socket) => {
       lastRaiserIndex: -1,
       followRank: null,
       awaitingQueenFollow: false,
-      pendingRiverChoices: new Set()
+      pendingRiverChoices: new Set(),
+      pendingRollChoices: new Set()
     };
 
     socket.leave('lobby');
@@ -128,17 +299,10 @@ io.on('connection', (socket) => {
     broadcastRoomsList();
   });
 
-  // Join Existing Table
   socket.on('join_room', ({ roomId, playerName }) => {
     const room = rooms[roomId];
-    if (!room) {
-      socket.emit('error_msg', 'Table not found!');
-      return;
-    }
-    if (room.players.length >= 4) {
-      socket.emit('error_msg', 'Table is full (4/4 Players)!');
-      return;
-    }
+    if (!room) return socket.emit('error_msg', 'Table not found!');
+    if (room.players.length >= 4) return socket.emit('error_msg', 'Table is full!');
 
     room.players.push({
       id: socket.id,
@@ -158,12 +322,8 @@ io.on('connection', (socket) => {
     broadcastRoomsList();
   });
 
-  // Leave Table
-  socket.on('leave_room', ({ roomId }) => {
-    leaveTable(socket, roomId);
-  });
+  socket.on('leave_room', ({ roomId }) => leaveTable(socket, roomId));
 
-  // Start Hand
   socket.on('start_hand', ({ roomId, fillBots }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id) return;
@@ -189,10 +349,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    if (room.players.length < 2) {
-      socket.emit('error_msg', 'Need at least 2 players or bots to deal hand!');
-      return;
-    }
+    if (room.players.length < 2) return socket.emit('error_msg', 'Need at least 2 players!');
 
     room.status = 'playing';
     room.deck = createDeck();
@@ -212,17 +369,51 @@ io.on('connection', (socket) => {
       }
     });
 
-    // Deal 3rd Street (2 down, 1 up)
-    for (let i = 0; i < 2; i++) {
-      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+    if (room.ruleVariant === 'roll_your_own') {
+      // Roll Your Own: Deal 3 down, then prompt each player to choose 1 to roll face-up
+      for (let i = 0; i < 3; i++) {
+        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+      }
+      promptRollYourOwn(room);
+    } else {
+      // Standard 7-Card Stud Street 3: 2 down, 1 up
+      for (let i = 0; i < 2; i++) {
+        room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+      }
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
+      startStreetBetting(room, 3);
     }
-    room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
 
     broadcastRoomsList();
-    startStreetBetting(room, 3);
   });
 
-  // Betting Action
+  /* Roll Your Own Card Selection */
+  socket.on('roll_card_choice', ({ roomId, cardIndex }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (player && player.cards[cardIndex]) {
+      player.cards[cardIndex].isFaceUp = true;
+      room.pendingRollChoices.delete(socket.id);
+    }
+
+    if (room.pendingRollChoices.size === 0) {
+      // Auto roll bots
+      room.players.forEach(p => {
+        if (p.isBot && !p.folded) {
+          const downCards = p.cards.filter(c => !c.isFaceUp);
+          if (downCards.length) {
+            const bestCard = downCards.sort((a,b) => b.value - a.value)[0];
+            bestCard.isFaceUp = true;
+          }
+        }
+      });
+      startStreetBetting(room, room.currentStreet);
+    } else {
+      broadcastState(roomId);
+    }
+  });
+
   socket.on('take_action', ({ roomId, action, raiseAmt }) => {
     const room = rooms[roomId];
     if (!room || room.status !== 'playing') return;
@@ -232,7 +423,6 @@ io.on('connection', (socket) => {
     applyPlayerAction(room, player, action, raiseAmt);
   });
 
-  // 7th Street River Choice
   socket.on('river_choice', ({ roomId, faceUp }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -264,6 +454,13 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+function promptRollYourOwn(room) {
+  const humans = room.players.filter(p => !p.isBot && !p.folded);
+  room.pendingRollChoices = new Set(humans.map(p => p.id));
+  humans.forEach(h => io.to(h.id).emit('prompt_roll_modal'));
+  broadcastState(room.id);
+}
 
 function leaveTable(socket, roomId) {
   const room = rooms[roomId];
@@ -300,7 +497,7 @@ function dealCard(room, player, isFaceUp) {
       io.to(room.id).emit('notification', { text: `👑 Queen followed by ${card.rank}! Queens & ${card.rank}s are WILD!` });
     } else if (card.rank === 'Q') {
       room.awaitingQueenFollow = true;
-      io.to(room.id).emit('notification', { text: `👑 Face-up Queen dealt! Next face-up card sets the wild rank!` });
+      io.to(room.id).emit('notification', { text: `👑 Face-up Queen dealt! Next face-up card sets wild rank!` });
     }
   }
 }
@@ -315,7 +512,8 @@ function startStreetBetting(room, street) {
   room.players.forEach((p, idx) => {
     if (!p.folded) {
       const upCards = p.cards.filter(c => c.isFaceUp);
-      const top = upCards.length ? Math.max(...upCards.map(c => isWild(c, room.ruleVariant, room.followRank) ? 99 : c.value)) : 0;
+      const lowHole = getPlayerLowHoleRank(p);
+      const top = upCards.length ? Math.max(...upCards.map(c => isWild(c, room.ruleVariant, room.followRank, lowHole) ? 99 : c.value)) : 0;
       if (top > highestVal) {
         highestVal = top;
         highestIdx = idx;
@@ -354,17 +552,18 @@ function triggerTurn(room) {
 function runBotTurn(room, bot) {
   const toCall = room.highestBet - bot.currentBet;
   const minInc = room.currentStreet >= 5 ? 4 : 2;
-  const hand = evaluate7Cards(bot.cards, room.ruleVariant, room.followRank);
-  const wildCount = bot.cards.filter(c => isWild(c, room.ruleVariant, room.followRank)).length;
+  const lowHole = getPlayerLowHoleRank(bot);
+  const hand = evaluateBest7CardHand(bot.cards, room.ruleVariant, room.followRank, lowHole);
+  const wildCount = bot.cards.filter(c => isWild(c, room.ruleVariant, room.followRank, lowHole)).length;
 
   let action = 'check';
   let raiseAmt = toCall + minInc;
 
   if (bot.persona === 'calling_station') {
     if (toCall === 0) {
-      action = (hand.score >= 400 && Math.random() < 0.25) ? 'raise' : 'check';
+      action = (hand.score >= 5000000 && Math.random() < 0.25) ? 'raise' : 'check';
     } else {
-      action = (toCall > bot.chips) ? 'check' : ((room.currentStreet === 7 && hand.score < 200 && Math.random() < 0.03) ? 'fold' : 'check');
+      action = (toCall > bot.chips) ? 'check' : ((room.currentStreet === 7 && hand.score < 2000000 && Math.random() < 0.04) ? 'fold' : 'check');
     }
   } else if (bot.persona === 'aggressive') {
     if (toCall === 0) {
@@ -381,11 +580,11 @@ function runBotTurn(room, bot) {
       } else if (Math.random() < 0.94) {
         action = 'check';
       } else {
-        action = (room.currentStreet >= 6 && hand.score < 200) ? 'fold' : 'check';
+        action = (room.currentStreet >= 6 && hand.score < 2000000) ? 'fold' : 'check';
       }
     }
   } else {
-    if (wildCount > 0 || hand.score >= 300) {
+    if (wildCount > 0 || hand.score >= 5000000) {
       action = (Math.random() < 0.7) ? 'raise' : 'check';
       raiseAmt = Math.min(bot.chips, toCall + minInc + (wildCount * 2));
     } else {
@@ -446,8 +645,14 @@ function advanceTurn(room) {
 function advanceStreet(room) {
   if (room.currentStreet < 6) {
     room.currentStreet++;
-    room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
-    startStreetBetting(room, room.currentStreet);
+    if (room.ruleVariant === 'roll_your_own') {
+      // Deal down card, then prompt roll
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, false); });
+      promptRollYourOwn(room);
+    } else {
+      room.players.forEach(p => { if (!p.folded) dealCard(room, p, true); });
+      startStreetBetting(room, room.currentStreet);
+    }
   } else if (room.currentStreet === 6) {
     const humans = room.players.filter(p => !p.isBot && !p.folded);
     room.pendingRiverChoices = new Set(humans.map(p => p.id));
@@ -474,7 +679,8 @@ function showdown(room) {
 
   room.players.forEach(p => {
     if (!p.folded) {
-      const res = evaluate7Cards(p.cards, room.ruleVariant, room.followRank);
+      const lowHole = getPlayerLowHoleRank(p);
+      const res = evaluateBest7CardHand(p.cards, room.ruleVariant, room.followRank, lowHole);
       p.handDesc = res.desc;
       if (res.score > bestScore) {
         bestScore = res.score;
@@ -513,22 +719,29 @@ function broadcastState(roomId, message = null) {
   room.players.forEach(recipient => {
     if (recipient.isBot) return;
 
-    const sanitizedPlayers = room.players.map(p => ({
-      id: p.id,
-      name: p.name,
-      chips: p.chips,
-      folded: p.folded,
-      currentBet: p.currentBet,
-      isBot: p.isBot,
-      persona: p.persona,
-      handDesc: p.handDesc || '',
-      cards: p.cards.map(c => {
-        if (room.currentStreet === 8 || p.id === recipient.id || c.isFaceUp) {
-          return c;
-        }
-        return { isFaceUp: false };
-      })
-    }));
+    const recipientLowHole = getPlayerLowHoleRank(recipient);
+
+    const sanitizedPlayers = room.players.map(p => {
+      const pLowHole = getPlayerLowHoleRank(p);
+      return {
+        id: p.id,
+        name: p.name,
+        chips: p.chips,
+        folded: p.folded,
+        currentBet: p.currentBet,
+        isBot: p.isBot,
+        persona: p.persona,
+        lowHoleRank: (room.currentStreet === 8 || p.id === recipient.id) ? pLowHole : null,
+        handDesc: p.handDesc || (p.id === recipient.id && p.cards.length >= 5 ? evaluateBest7CardHand(p.cards, room.ruleVariant, room.followRank, recipientLowHole).desc : ''),
+        cards: p.cards.map(c => {
+          if (room.currentStreet === 8 || p.id === recipient.id || c.isFaceUp) {
+            const cardWild = isWild(c, room.ruleVariant, room.followRank, pLowHole);
+            return { ...c, isWild: cardWild };
+          }
+          return { isFaceUp: false };
+        })
+      };
+    });
 
     io.to(recipient.id).emit('game_state', {
       roomId: room.id,
@@ -549,4 +762,4 @@ function broadcastState(roomId, message = null) {
 }
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`));
+server.listen(PORT, () => console.log(`Casino Engine Online on port ${PORT}`));

@@ -97,18 +97,16 @@
     }
     .icon-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
 
-    /* LOBBY / TABLE BROWSER SCREEN */
+    /* LOBBY VIEW */
     .lobby-container {
       width: 96vw;
       max-width: 1040px;
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 340px 1fr;
       gap: 20px;
       margin-top: 10px;
     }
-    @media (max-width: 800px) {
-      .lobby-container { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 800px) { .lobby-container { grid-template-columns: 1fr; } }
 
     .lobby-card {
       background: var(--panel-bg);
@@ -153,10 +151,7 @@
       align-items: center;
       transition: all 0.2s;
     }
-    .table-item:hover {
-      border-color: var(--accent-color);
-      background: rgba(255,255,255,0.1);
-    }
+    .table-item:hover { border-color: var(--accent-color); background: rgba(255,255,255,0.1); }
     .table-info-title { font-size: 1.05rem; font-weight: bold; color: #fff; }
     .table-info-meta { font-size: 0.8rem; color: #aaa; margin-top: 3px; }
     .badge-status {
@@ -170,7 +165,7 @@
     .badge-waiting { background: #27ae60; color: #fff; }
     .badge-playing { background: #e67e22; color: #fff; }
 
-    /* GAME TABLE VIEW */
+    /* GAME TABLE */
     .game-view {
       display: none;
       flex-direction: column;
@@ -213,7 +208,6 @@
     .pot-badge .pot-amount { font-size: 1.6rem; color: var(--accent-color); font-weight: 900; }
     .street-tag { font-size: 0.8rem; color: #00d2d3; font-weight: bold; }
 
-    /* Wild HUD */
     .wild-hud {
       background: var(--panel-bg);
       border: 1.5px solid var(--accent-color);
@@ -268,7 +262,6 @@
     .seat-badge { font-size: 0.65rem; color: var(--accent-color); font-weight: 600; margin-bottom: 4px; }
     .seat-status { font-size: 0.75rem; color: #3498db; min-height: 15px; font-weight: 600; }
 
-    /* Cards */
     .cards-row { display: flex; gap: 4px; margin-top: 4px; min-height: 48px; }
     .card {
       width: 32px;
@@ -417,6 +410,36 @@
       transition: all 0.25s;
     }
     .river-card-opt:hover { transform: translateY(-4px); }
+
+    /* Roll Your Own Card Select Tray */
+    .roll-cards-tray {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    .roll-select-card {
+      width: 50px;
+      height: 72px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #111;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 2px solid #ddd;
+      transition: all 0.2s;
+    }
+    .roll-select-card:hover {
+      border-color: var(--accent-color);
+      transform: scale(1.1);
+      box-shadow: 0 0 15px var(--accent-color);
+    }
+    .roll-select-card.red { color: #e74c3c; }
   </style>
 </head>
 <body>
@@ -464,6 +487,15 @@
     </div>
   </div>
 
+  <!-- Roll Your Own Pick Modal -->
+  <div class="modal-backdrop" id="rollModal" style="display:none;">
+    <div class="modal-box">
+      <h2>🎲 Roll Your Own</h2>
+      <p style="color:#ccc; font-size:0.9rem;">Click one of your hole cards to <b>ROLL FACE UP</b> to the table:</p>
+      <div class="roll-cards-tray" id="rollCardsTray"></div>
+    </div>
+  </div>
+
   <header>
     <h1 id="mainTitle">7-CARD STUD POKER</h1>
     <div class="header-btns">
@@ -474,7 +506,6 @@
 
   <!-- LOBBY SCREEN / TABLE BROWSER -->
   <div class="lobby-container" id="lobbyView">
-    <!-- Create Table Card -->
     <div class="lobby-card">
       <h2>➕ Create a Table</h2>
       <label style="font-size:0.8rem; color:#aaa;">Your Nickname</label>
@@ -483,17 +514,19 @@
       <label style="font-size:0.8rem; color:#aaa;">Table Name</label>
       <input type="text" id="tableNameInput" placeholder="e.g. Vegas VIP Table" value="Vegas VIP Table">
 
-      <label style="font-size:0.8rem; color:#aaa;">House Rules</label>
+      <label style="font-size:0.8rem; color:#aaa;">House Rules & Variants</label>
       <select id="ruleVariantInput">
-        <option value="standard">Standard Rules (No Wilds)</option>
-        <option value="deuces">Deuces Wild (2s are Wild)</option>
+        <option value="standard">Standard 7-Card Stud</option>
+        <option value="deuces">Deuces Wild (2s Wild)</option>
         <option value="follow">Follow the Queen (Queens & Follower Wild)</option>
+        <option value="seven_makes">Seven & What Makes It (7s & sums of 7 Wild)</option>
+        <option value="low_hole">Low Hole Wild (Lowest Hole Card Wild)</option>
+        <option value="roll_your_own">Roll Your Own (Tahoe Stud / Choose Roll)</option>
       </select>
 
       <button class="modal-btn" onclick="createTable()">Create & Sit At Table</button>
     </div>
 
-    <!-- Available Tables List -->
     <div class="lobby-card">
       <h2>🎰 Live Casino Tables</h2>
       <div class="table-list" id="tableListContainer">
@@ -629,7 +662,7 @@
     }
   }
 
-  /* ================= NETWORKING & LOBBY ================= */
+  /* ================= NETWORKING ================= */
   const socket = io(CONFIG.SERVER_URL);
   let currentRoomId = null;
   let lastState = null;
@@ -655,9 +688,7 @@
   }
 
   function leaveTable() {
-    if (currentRoomId) {
-      socket.emit('leave_room', { roomId: currentRoomId });
-    }
+    if (currentRoomId) socket.emit('leave_room', { roomId: currentRoomId });
   }
 
   function startHand(fillBots) {
@@ -691,7 +722,6 @@
   socket.on('error_msg', (msg) => alert(msg));
   socket.on('notification', (data) => log(data.text));
 
-  /* Update Live Room List */
   socket.on('rooms_list', (rooms) => {
     const container = document.getElementById('tableListContainer');
     if (!rooms || rooms.length === 0) {
@@ -700,17 +730,24 @@
     }
 
     container.innerHTML = '';
+    const ruleLabels = {
+      standard: 'Standard',
+      deuces: 'Deuces Wild',
+      follow: 'Follow the Queen',
+      seven_makes: '7 & What Makes It',
+      low_hole: 'Low Hole Wild',
+      roll_your_own: 'Roll Your Own'
+    };
+
     rooms.forEach(r => {
       const item = document.createElement('div');
       item.className = 'table-item';
-
-      const ruleNames = { standard: 'Standard', deuces: 'Deuces Wild', follow: 'Follow the Queen' };
       const statusBadge = r.status === 'playing' ? '<span class="badge-status badge-playing">In Hand</span>' : '<span class="badge-status badge-waiting">Open Seats</span>';
 
       item.innerHTML = `
         <div>
           <div class="table-info-title">${r.name} ${statusBadge}</div>
-          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleNames[r.ruleVariant] || 'Standard'}</b> | Players: <b>${r.playerCount}/4</b></div>
+          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleLabels[r.ruleVariant] || 'Standard'}</b> | Players: <b>${r.playerCount}/4</b></div>
         </div>
         <button class="btn btn-raise" style="padding:6px 14px; font-size:0.85rem;" onclick="joinTable('${r.id}')" ${r.playerCount >= 4 ? 'disabled' : ''}>${r.playerCount >= 4 ? 'Full' : 'Join Table'}</button>
       `;
@@ -729,6 +766,31 @@
     playSound('deal');
   }
 
+  /* Roll Your Own Modal */
+  socket.on('prompt_roll_modal', () => {
+    const hero = lastState?.players.find(p => p.id === socket.id);
+    if (!hero) return;
+    const tray = document.getElementById('rollCardsTray');
+    tray.innerHTML = '';
+
+    hero.cards.forEach((card, idx) => {
+      if (!card.isFaceUp && card.rank) {
+        const isRed = card.suit === '♥' || card.suit === '♦';
+        const cardBtn = document.createElement('div');
+        cardBtn.className = `roll-select-card ${isRed ? 'red' : ''}`;
+        cardBtn.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+        cardBtn.onclick = () => {
+          document.getElementById('rollModal').style.display = 'none';
+          socket.emit('roll_card_choice', { roomId: currentRoomId, cardIndex: idx });
+          playSound('deal');
+        };
+        tray.appendChild(cardBtn);
+      }
+    });
+
+    document.getElementById('rollModal').style.display = 'flex';
+  });
+
   /* Game State Sync */
   socket.on('game_state', (state) => {
     lastState = state;
@@ -739,7 +801,6 @@
     const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)', 8: 'Showdown' };
     document.getElementById('streetText').innerText = state.status === 'waiting' ? 'Waiting for Host to Deal...' : (streetNames[state.currentStreet] || 'Playing');
 
-    // Host Controls
     const isHost = state.hostId === socket.id;
     const startBtn = document.getElementById('btnStart');
     if (state.status === 'waiting') {
@@ -750,28 +811,34 @@
       startBtn.style.display = 'none';
     }
 
-    // Wilds HUD
+    // Dynamic Wilds HUD Display
     const wildContainer = document.getElementById('wildCardsContainer');
     wildContainer.innerHTML = '';
-    let wildRanks = [];
-    if (state.ruleVariant === 'deuces') wildRanks = ['2'];
-    if (state.ruleVariant === 'follow') {
-      wildRanks.push('Q');
-      if (state.followRank) wildRanks.push(state.followRank);
-    }
-
-    if (wildRanks.length === 0) {
-      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">None</span>';
+    
+    if (state.ruleVariant === 'deuces') {
+      renderWildBadge('2');
+    } else if (state.ruleVariant === 'follow') {
+      renderWildBadge('Q');
+      if (state.followRank) renderWildBadge(state.followRank);
+    } else if (state.ruleVariant === 'seven_makes') {
+      renderWildBadge('7');
+      wildContainer.innerHTML += '<span style="font-size:0.75rem; color:#f1c40f; margin-left:4px;">(+ Combos summing to 7)</span>';
+    } else if (state.ruleVariant === 'low_hole') {
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#00d2d3;">Lowest Hole Card Wild</span>';
+    } else if (state.ruleVariant === 'roll_your_own') {
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#2ecc71;">Tahoe Stud (Roll Own)</span>';
     } else {
-      wildRanks.forEach(r => {
-        const c = document.createElement('div');
-        c.className = 'compact-wild-card';
-        c.innerHTML = `<span>${r}</span><span class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></span>`;
-        wildContainer.appendChild(c);
-      });
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">None</span>';
     }
 
-    // Render Seats (Up to 4)
+    function renderWildBadge(rank) {
+      const c = document.createElement('div');
+      c.className = 'compact-wild-card';
+      c.innerHTML = `<span>${rank}</span><span class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></span>`;
+      wildContainer.appendChild(c);
+    }
+
+    // Render Seats
     for (let idx = 0; idx < 4; idx++) {
       const p = state.players[idx];
       const seat = document.getElementById(`seat-${idx}`);
@@ -801,8 +868,7 @@
         const el = document.createElement('div');
         if (card.rank) {
           const isRed = card.suit === '♥' || card.suit === '♦';
-          const wild = (state.ruleVariant === 'deuces' && card.rank === '2') || (state.ruleVariant === 'follow' && (card.rank === 'Q' || card.rank === state.followRank));
-          el.className = `card ${isRed ? 'red' : ''} ${wild ? 'is-wild' : ''}`;
+          el.className = `card ${isRed ? 'red' : ''} ${card.isWild ? 'is-wild' : ''}`;
           el.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
         } else {
           el.className = 'card back';
