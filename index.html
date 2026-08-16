@@ -897,11 +897,11 @@
     document.getElementById('audioToggle').value = enable ? 'true' : 'false';
   }
 
-  function applySoundTheme(themeName) {
+  function applySoundTheme(themeName, preview = true) {
     soundTheme = themeName;
     localStorage.setItem('stud_sound_theme', themeName);
     document.getElementById('soundThemeSelector').value = themeName;
-    playSound('chip');
+    if (preview) playSound('chip');
   }
 
   function toggleSettingsModal(show) {
@@ -914,11 +914,11 @@
     else drawer.classList.remove('open');
   }
 
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
   applyTheme(savedTheme);
   toggleAudio(soundEnabled);
-  applySoundTheme(soundTheme);
-
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  applySoundTheme(soundTheme, false);
 
   const SOUND_THEMES = {
     classic: {
