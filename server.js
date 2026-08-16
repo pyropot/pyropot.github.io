@@ -1,8 +1,11 @@
 require('dotenv').config();
+const crypto = require('crypto');
+const { promisify } = require('util');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
@@ -11,6 +14,118 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: process.env.CORS_ORIGIN || '*', methods: ['GET', 'POST'] }
 });
+
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL is required. Add it to your environment before starting the server.');
+}
+
+const db = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }
+});
+
+const scrypt = promisify(crypto.scrypt);
+const DAILY_CHIPS = 500;
+const STARTING_CHIPS = 1_000;
+const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+const sessions = new Map();
+
+async function initializeDatabase() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS poker_accounts (
+      id BIGSERIAL PRIMARY KEY,
+      username VARCHAR(20) NOT NULL,
+      username_key VARCHAR(20) NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      chips INTEGER NOT NULL DEFAULT ${STARTING_CHIPS} CHECK (chips >= 0),
+      last_daily_claim_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+function normalizeUsername(username) {
+  return typeof username === 'string' ? username.trim().toLowerCase() : '';
+}
+
+function validateCredentials(username, password) {
+  if (typeof username !== 'string' || !/^[A-Za-z0-9_]{3,20}$/.test(username.trim())) {
+    return 'Username must use 3–20 letters, numbers, or underscores.';
+  }
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    return 'Password must be 8–128 characters.';
+  }
+  return null;
+}
+
+async function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  const hash = await scrypt(password, salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+  return { salt, hash: hash.toString('hex') };
+}
+
+async function passwordMatches(password, account) {
+  const { hash } = await hashPassword(password, account.password_salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(account.password_hash, 'hex'));
+}
+
+function makeSession(socket, account) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  sessions.set(token, { accountId: account.id, expiresAt });
+  socket.data.account = account;
+  socket.data.sessionToken = token;
+  return token;
+}
+
+function dailyAvailableIn(account) {
+  if (!account.last_daily_claim_at) return 0;
+  return Math.max(0, DAILY_COOLDOWN_MS - (Date.now() - new Date(account.last_daily_claim_at).getTime()));
+}
+
+function accountPayload(account, sessionToken = null) {
+  return {
+    username: account.username,
+    chips: account.chips,
+    dailyAvailableIn: dailyAvailableIn(account),
+    sessionToken
+  };
+}
+
+function sendAccountState(socket, sessionToken = null) {
+  socket.emit('account_state', socket.data.account ? accountPayload(socket.data.account, sessionToken) : null);
+}
+
+function requireAccount(socket) {
+  if (!socket.data.account) {
+    socket.emit('error_msg', 'Please sign in before joining a table.');
+    return null;
+  }
+  return socket.data.account;
+}
+
+function isAccountSeated(accountId) {
+  return Object.values(rooms).some(room => room.players.some(player => player.accountId === accountId));
+}
+
+async function persistPlayerBalance(player) {
+  if (!player || player.isBot || !player.accountId) return;
+  const result = await db.query('UPDATE poker_accounts SET chips = $1 WHERE id = $2 RETURNING chips', [player.chips, player.accountId]);
+  if (!result.rowCount) throw new Error(`Account ${player.accountId} was not found while saving chips.`);
+  const playerSocket = io.sockets.sockets.get(player.id);
+  if (playerSocket?.data.account) {
+    playerSocket.data.account.chips = result.rows[0].chips;
+    sendAccountState(playerSocket, playerSocket.data.sessionToken);
+  }
+}
+
+function persistRoomBalances(room) {
+  room.players.forEach(player => {
+    persistPlayerBalance(player).catch(error => console.error('Unable to save player balance:', error));
+  });
+}
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -276,7 +391,116 @@ io.on('connection', (socket) => {
   socket.join('lobby');
   socket.emit('rooms_list', getPublicRooms());
 
-  socket.on('create_room', ({ tableName, playerName, ruleVariant, startingChips, ante, botLineup }) => {
+  socket.on('register_account', async ({ username, password }) => {
+    const validationError = validateCredentials(username, password);
+    if (validationError) return socket.emit('auth_error', validationError);
+
+    try {
+      const cleanUsername = username.trim();
+      const { salt, hash } = await hashPassword(password);
+      const result = await db.query(
+        `INSERT INTO poker_accounts (username, username_key, password_hash, password_salt, chips)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, username, chips, last_daily_claim_at`,
+        [cleanUsername, normalizeUsername(cleanUsername), hash, salt, STARTING_CHIPS]
+      );
+      const token = makeSession(socket, result.rows[0]);
+      sendAccountState(socket, token);
+    } catch (error) {
+      if (error.code === '23505') return socket.emit('auth_error', 'That username is already taken.');
+      console.error('Account registration failed:', error);
+      socket.emit('auth_error', 'Unable to create your account. Please try again.');
+    }
+  });
+
+  socket.on('sign_in', async ({ username, password }) => {
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return socket.emit('auth_error', 'Enter your username and password.');
+    }
+
+    try {
+      const result = await db.query(
+        'SELECT id, username, chips, last_daily_claim_at, password_hash, password_salt FROM poker_accounts WHERE username_key = $1',
+        [normalizeUsername(username)]
+      );
+      const account = result.rows[0];
+      if (!account || !(await passwordMatches(password, account))) {
+        return socket.emit('auth_error', 'Incorrect username or password.');
+      }
+      delete account.password_hash;
+      delete account.password_salt;
+      const token = makeSession(socket, account);
+      sendAccountState(socket, token);
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      socket.emit('auth_error', 'Unable to sign in. Please try again.');
+    }
+  });
+
+  socket.on('restore_session', async ({ sessionToken }) => {
+    const session = sessions.get(sessionToken);
+    if (!session || session.expiresAt < Date.now()) {
+      sessions.delete(sessionToken);
+      return sendAccountState(socket);
+    }
+
+    try {
+      const result = await db.query('SELECT id, username, chips, last_daily_claim_at FROM poker_accounts WHERE id = $1', [session.accountId]);
+      if (!result.rowCount) return sendAccountState(socket);
+      socket.data.account = result.rows[0];
+      socket.data.sessionToken = sessionToken;
+      sendAccountState(socket, sessionToken);
+    } catch (error) {
+      console.error('Session restore failed:', error);
+      sendAccountState(socket);
+    }
+  });
+
+  socket.on('claim_daily_chips', async () => {
+    const account = requireAccount(socket);
+    if (!account) return;
+    if (isAccountSeated(account.id)) return socket.emit('error_msg', 'Claim your daily chips after leaving the table.');
+
+    try {
+      const result = await db.query(
+        `UPDATE poker_accounts
+         SET chips = chips + $1, last_daily_claim_at = NOW()
+         WHERE id = $2
+           AND (last_daily_claim_at IS NULL OR last_daily_claim_at <= NOW() - ($3::bigint * INTERVAL '1 millisecond'))
+         RETURNING chips, last_daily_claim_at`,
+        [DAILY_CHIPS, account.id, DAILY_COOLDOWN_MS]
+      );
+      if (!result.rowCount) {
+        const refreshed = await db.query('SELECT chips, last_daily_claim_at FROM poker_accounts WHERE id = $1', [account.id]);
+        Object.assign(account, refreshed.rows[0]);
+        sendAccountState(socket, socket.data.sessionToken);
+        return socket.emit('error_msg', 'Your daily chips are not ready yet.');
+      }
+      Object.assign(account, result.rows[0]);
+      sendAccountState(socket, socket.data.sessionToken);
+      socket.emit('account_notice', `Daily bonus claimed: +$${DAILY_CHIPS}!`);
+    } catch (error) {
+      console.error('Daily claim failed:', error);
+      socket.emit('error_msg', 'Unable to claim daily chips. Please try again.');
+    }
+  });
+
+  socket.on('sign_out', () => {
+    if (socket.data.account && isAccountSeated(socket.data.account.id)) {
+      return socket.emit('error_msg', 'Leave the table before signing out.');
+    }
+    if (socket.data.sessionToken) sessions.delete(socket.data.sessionToken);
+    socket.data.account = null;
+    socket.data.sessionToken = null;
+    sendAccountState(socket);
+  });
+
+  socket.on('create_room', ({ tableName, ruleVariant, startingChips, ante, botLineup }) => {
+    const account = requireAccount(socket);
+    if (!account || isAccountSeated(account.id)) {
+      if (account) socket.emit('error_msg', 'This account is already seated at a table.');
+      return;
+    }
     const roomId = 'table_' + Math.random().toString(36).substr(2, 6);
     const initChips = parseInt(startingChips, 10) || 100;
     const initAnte = parseInt(ante, 10) || 1;
@@ -292,8 +516,9 @@ io.on('connection', (socket) => {
       status: 'waiting',
       players: [{
         id: socket.id,
-        name: playerName || 'Host',
-        chips: initChips,
+        accountId: account.id,
+        name: account.username,
+        chips: account.chips,
         cards: [],
         folded: false,
         currentBet: 0,
@@ -320,15 +545,21 @@ io.on('connection', (socket) => {
     broadcastRoomsList();
   });
 
-  socket.on('join_room', ({ roomId, playerName }) => {
+  socket.on('join_room', ({ roomId }) => {
+    const account = requireAccount(socket);
+    if (!account || isAccountSeated(account.id)) {
+      if (account) socket.emit('error_msg', 'This account is already seated at a table.');
+      return;
+    }
     const room = rooms[roomId];
     if (!room) return socket.emit('error_msg', 'Table not found!');
     if (room.players.length >= 4) return socket.emit('error_msg', 'Table is full (4/4 Players)!');
 
     room.players.push({
       id: socket.id,
-      name: playerName || `Player ${room.players.length + 1}`,
-      chips: room.startingChips || 100,
+      accountId: account.id,
+      name: account.username,
+      chips: account.chips,
       cards: [],
       folded: false,
       currentBet: 0,
@@ -339,7 +570,7 @@ io.on('connection', (socket) => {
     socket.leave('lobby');
     socket.join(roomId);
     socket.emit('joined_room', { roomId });
-    sendRichLog(roomId, 'ACTION', `<b>${playerName}</b> joined the table.`);
+    sendRichLog(roomId, 'ACTION', `<b>${account.username}</b> joined the table.`);
     broadcastState(roomId);
     broadcastRoomsList();
   });
@@ -390,6 +621,7 @@ io.on('connection', (socket) => {
         room.pot += room.ante;
       }
     });
+    persistRoomBalances(room);
 
     sendRichLog(roomId, 'STREET', `🃏 <b>--- NEW HAND STARTED ---</b> (Ante $${room.ante})`);
 
@@ -496,6 +728,7 @@ function leaveTable(socket, roomId) {
   socket.leave(roomId);
   socket.join('lobby');
   const departingPlayer = room.players.find(p => p.id === socket.id);
+  persistPlayerBalance(departingPlayer).catch(error => console.error('Unable to save departing player balance:', error));
   room.players = room.players.filter(p => p.id !== socket.id);
 
   sendRichLog(roomId, 'ACTION', `<b>${departingPlayer?.name || 'A player'}</b> left the table.`);
@@ -669,6 +902,7 @@ function applyPlayerAction(room, player, action, raiseAmt = 0) {
     sendRichLog(room.id, 'ACTION', `💥 <b>${player.name}</b> bet/raised to $${room.highestBet} (+$${amt})!`);
   }
 
+  persistRoomBalances(room);
   broadcastState(room.id);
   advanceTurn(room);
 }
@@ -752,6 +986,7 @@ function showdown(room) {
   room.pot = 0;
   room.currentStreet = 8;
   room.status = 'waiting';
+  persistRoomBalances(room);
   broadcastState(room.id, `🏆 Showdown! ${winners.map(w => w.name).join(', ')} won with ${bestDesc}!`);
   broadcastRoomsList();
 }
@@ -763,6 +998,7 @@ function endHand(room, winner) {
     room.pot = 0;
     room.currentStreet = 8;
     room.status = 'waiting';
+    persistRoomBalances(room);
     broadcastState(room.id, `🏆 ${winner.name} won the pot!`);
     broadcastRoomsList();
   }
@@ -819,4 +1055,9 @@ function broadcastState(roomId, message = null) {
 }
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`));
+initializeDatabase()
+  .then(() => server.listen(PORT, () => console.log(`Casino Server Online on port ${PORT}`)))
+  .catch(error => {
+    console.error('Database initialization failed:', error);
+    process.exit(1);
+  });

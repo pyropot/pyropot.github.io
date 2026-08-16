@@ -171,6 +171,30 @@
     }
     @media (max-width: 840px) { .lobby-container { grid-template-columns: 1fr; } }
 
+    .account-summary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .account-summary strong { color: var(--accent-color); }
+    .account-summary .account-balance { color: #2ecc71; font-weight: 900; margin-left: auto; }
+    .account-btn {
+      border: 1px solid var(--accent-color);
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .account-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
     .lobby-card {
       background: var(--panel-bg);
       border: 2px solid var(--accent-color);
@@ -543,6 +567,51 @@
       box-shadow: 0 0 15px var(--accent-color);
     }
     .roll-select-card.red { color: #e74c3c; }
+
+    @media (max-width: 600px) {
+      body { padding: 6px; }
+      header { width: 100%; margin-bottom: 4px; gap: 8px; }
+      h1 { font-size: 1.05rem; letter-spacing: 0; }
+      .header-btns { gap: 4px; }
+      .icon-btn { padding: 6px 8px; font-size: 0.72rem; }
+      .lobby-container, .control-dock { width: 100%; }
+      .lobby-container { gap: 10px; margin-top: 4px; }
+      .lobby-card { padding: 14px; }
+      .table-list { max-height: 330px; }
+      .table-item { padding: 10px; gap: 8px; }
+      .table-info-title { font-size: 0.9rem; }
+      .table-info-meta { font-size: 0.7rem; }
+      .table {
+        width: 100%;
+        height: min(68vh, 590px);
+        min-height: 460px;
+        border-width: 10px;
+        border-radius: 34px;
+        margin-bottom: 6px;
+      }
+      .player-seat { min-width: 112px; padding: 6px 7px; border-radius: 9px; }
+      .seat-name, .seat-chips { font-size: 0.7rem; }
+      .seat-badge, .seat-status { font-size: 0.58rem; }
+      .cards-row { gap: 2px; min-height: 38px; }
+      .card { width: 24px; height: 35px; font-size: 0.58rem; }
+      #seat-0 { bottom: 7px; }
+      #seat-1 { left: 5px; top: 45%; }
+      #seat-2 { top: 7px; }
+      #seat-3 { right: 5px; top: 45%; }
+      .pot-badge { padding: 6px 16px; }
+      .pot-badge .pot-amount { font-size: 1.25rem; }
+      .wild-hud { max-width: 180px; flex-wrap: wrap; justify-content: center; }
+      .control-dock { padding: 8px; gap: 7px; justify-content: center; }
+      .action-group-left, .action-group-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+      .btn { padding: 9px 12px; font-size: 0.82rem; }
+      .slider-box { width: 100%; padding: 6px; gap: 5px; justify-content: center; }
+      #raiseSlider { width: 120px; }
+      .preset-btn { padding: 4px 5px; font-size: 0.67rem; }
+      .sidebar-drawer { width: 92vw; right: -94vw; }
+      .modal-box { width: calc(100% - 24px); max-height: calc(100vh - 24px); overflow-y: auto; padding: 18px; }
+      .river-choices { gap: 8px; }
+      .river-card-opt { width: 45%; padding: 10px; }
+    }
   </style>
 </head>
 <body>
@@ -555,6 +624,21 @@
     </div>
     <div class="sidebar-content" id="sidebarLogContent">
       <div class="log-item"><span class="log-badge badge-street">System</span>Connected to table feed.</div>
+    </div>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="modal-backdrop" id="accountModal" style="display:none;">
+    <div class="modal-box">
+      <h2>♠ Player Account</h2>
+      <p id="accountModalHint" style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Create an account or sign in to play.</p>
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Username</label>
+      <input type="text" id="accountUsernameInput" autocomplete="username" maxlength="20" placeholder="3–20 letters, numbers, or _" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Password</label>
+      <input type="password" id="accountPasswordInput" autocomplete="current-password" maxlength="128" placeholder="At least 8 characters" style="width:100%; padding:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+      <div id="accountAuthMessage" role="alert" style="min-height:20px; color:#ff8a80; font-size:0.82rem; margin-top:8px;"></div>
+      <button class="modal-btn" onclick="submitAccount('register')">Create Account</button>
+      <button class="account-btn" style="width:100%; margin-top:8px; padding:11px;" onclick="submitAccount('sign-in')">Sign In</button>
     </div>
   </div>
 
@@ -630,8 +714,10 @@
   <div class="lobby-container" id="lobbyView">
     <div class="lobby-card">
       <h2>➕ Create a Table</h2>
-      <label>Your Nickname</label>
-      <input type="text" id="playerNameInput" placeholder="Your Name" value="Hero">
+      <div class="account-summary" id="accountSummary">
+        <span>Not signed in</span>
+        <button class="account-btn" onclick="openAccountModal()">Sign in</button>
+      </div>
 
       <label>Table Name</label>
       <input type="text" id="tableNameInput" placeholder="e.g. Vegas VIP Table" value="Vegas VIP Table">
@@ -821,6 +907,43 @@
   const socket = io(CONFIG.SERVER_URL);
   let currentRoomId = null;
   let lastState = null;
+  let account = null;
+  const ACCOUNT_SESSION_KEY = 'stud_account_session';
+
+  function openAccountModal(message = '') {
+    document.getElementById('accountAuthMessage').innerText = message;
+    document.getElementById('accountModal').style.display = 'flex';
+  }
+
+  function closeAccountModal() {
+    document.getElementById('accountModal').style.display = 'none';
+    document.getElementById('accountAuthMessage').innerText = '';
+  }
+
+  function submitAccount(action) {
+    const username = document.getElementById('accountUsernameInput').value.trim();
+    const password = document.getElementById('accountPasswordInput').value;
+    document.getElementById('accountAuthMessage').innerText = '';
+    socket.emit(action === 'register' ? 'register_account' : 'sign_in', { username, password });
+  }
+
+  function formatDailyTime(milliseconds) {
+    const hours = Math.ceil(milliseconds / 3600000);
+    return hours <= 1 ? 'Ready soon' : `Ready in ${hours}h`;
+  }
+
+  function renderAccount() {
+    const summary = document.getElementById('accountSummary');
+    if (!account) {
+      summary.innerHTML = '<span>Not signed in</span><button class="account-btn" onclick="openAccountModal()">Sign in</button>';
+      return;
+    }
+    const dailyLabel = account.dailyAvailableIn > 0 ? formatDailyTime(account.dailyAvailableIn) : 'Claim +$500';
+    summary.innerHTML = `<strong>${account.username}</strong><span class="account-balance">$${account.chips}</span><button class="account-btn" onclick="claimDaily()" ${account.dailyAvailableIn > 0 || currentRoomId ? 'disabled' : ''}>${dailyLabel}</button><button class="account-btn" onclick="signOut()">Sign out</button>`;
+  }
+
+  function claimDaily() { socket.emit('claim_daily_chips'); }
+  function signOut() { socket.emit('sign_out'); }
 
   function appendRichLog(category, text, time) {
     const container = document.getElementById('sidebarLogContent');
@@ -834,19 +957,19 @@
   }
 
   function createTable() {
-    const playerName = document.getElementById('playerNameInput').value.trim() || 'Hero';
+    if (!account) return openAccountModal('Sign in before creating a table.');
     const tableName = document.getElementById('tableNameInput').value.trim() || 'Vegas Table';
     const ruleVariant = document.getElementById('ruleVariantInput').value;
     const startingChips = document.getElementById('startingChipsInput').value;
     const ante = document.getElementById('anteInput').value;
     const botLineup = document.getElementById('botSetInput').value.split(',');
 
-    socket.emit('create_room', { tableName, playerName, ruleVariant, startingChips, ante, botLineup });
+    socket.emit('create_room', { tableName, ruleVariant, startingChips, ante, botLineup });
   }
 
   function joinTable(roomId) {
-    const playerName = document.getElementById('playerNameInput').value.trim() || 'Hero';
-    socket.emit('join_room', { roomId, playerName });
+    if (!account) return openAccountModal('Sign in before joining a table.');
+    socket.emit('join_room', { roomId });
   }
 
   function leaveTable() {
@@ -872,6 +995,7 @@
     document.getElementById('lobbyView').style.display = 'none';
     document.getElementById('gameView').style.display = 'flex';
     document.getElementById('leaveBtn').style.display = 'flex';
+    renderAccount();
   });
 
   socket.on('left_room', () => {
@@ -880,9 +1004,29 @@
     document.getElementById('gameView').style.display = 'none';
     document.getElementById('leaveBtn').style.display = 'none';
     document.getElementById('mainTitle').innerText = '7-CARD STUD POKER';
+    renderAccount();
   });
 
   socket.on('error_msg', (msg) => alert(msg));
+
+  socket.on('auth_error', (message) => openAccountModal(message));
+
+  socket.on('account_notice', (message) => alert(message));
+
+  socket.on('account_state', (state) => {
+    account = state;
+    if (state?.sessionToken) localStorage.setItem(ACCOUNT_SESSION_KEY, state.sessionToken);
+    if (!state) localStorage.removeItem(ACCOUNT_SESSION_KEY);
+    renderAccount();
+    if (state) closeAccountModal();
+    else if (!currentRoomId) openAccountModal();
+  });
+
+  socket.on('connect', () => {
+    const sessionToken = localStorage.getItem(ACCOUNT_SESSION_KEY);
+    if (sessionToken) socket.emit('restore_session', { sessionToken });
+    else openAccountModal();
+  });
 
   socket.on('rich_log', (data) => {
     appendRichLog(data.category, data.text, data.time);
