@@ -31,6 +31,7 @@ const STARTING_CHIPS = 1_000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const sessions = new Map();
+const balanceWrites = new Map();
 
 async function initializeDatabase() {
   await db.query(`
@@ -110,15 +111,21 @@ function isAccountSeated(accountId) {
   return Object.values(rooms).some(room => room.players.some(player => player.accountId === accountId));
 }
 
-async function persistPlayerBalance(player) {
+function persistPlayerBalance(player) {
   if (!player || player.isBot || !player.accountId) return;
-  const result = await db.query('UPDATE poker_accounts SET chips = $1 WHERE id = $2 RETURNING chips', [player.chips, player.accountId]);
-  if (!result.rowCount) throw new Error(`Account ${player.accountId} was not found while saving chips.`);
-  const playerSocket = io.sockets.sockets.get(player.id);
-  if (playerSocket?.data.account) {
-    playerSocket.data.account.chips = result.rows[0].chips;
-    sendAccountState(playerSocket, playerSocket.data.sessionToken);
-  }
+  const { accountId, id: socketId, chips } = player;
+  const previousWrite = balanceWrites.get(accountId) || Promise.resolve();
+  const write = previousWrite.catch(() => {}).then(async () => {
+    const result = await db.query('UPDATE poker_accounts SET chips = $1 WHERE id = $2 RETURNING chips', [chips, accountId]);
+    if (!result.rowCount) throw new Error(`Account ${accountId} was not found while saving chips.`);
+    const playerSocket = io.sockets.sockets.get(socketId);
+    if (playerSocket?.data.account) {
+      playerSocket.data.account.chips = result.rows[0].chips;
+      sendAccountState(playerSocket, playerSocket.data.sessionToken);
+    }
+  });
+  balanceWrites.set(accountId, write);
+  return write;
 }
 
 function persistRoomBalances(room) {

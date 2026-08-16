@@ -1028,6 +1028,12 @@
     else openAccountModal();
   });
 
+  setInterval(() => {
+    if (!account || account.dailyAvailableIn <= 0) return;
+    account.dailyAvailableIn = Math.max(0, account.dailyAvailableIn - 60_000);
+    renderAccount();
+  }, 60_000);
+
   socket.on('rich_log', (data) => {
     appendRichLog(data.category, data.text, data.time);
   });
