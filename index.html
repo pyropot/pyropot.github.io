@@ -78,6 +78,42 @@
       --card-back: repeating-linear-gradient(45deg, #222222, #222222 5px, #333333 5px, #333333 10px);
     }
 
+    [data-theme="emerald-noir"] {
+      --bg-gradient: radial-gradient(circle at center, #12231d 0%, #060c09 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #167552 0%, #0d4b36 60%, #062b20 100%);
+      --felt-border: #b6923d;
+      --accent-color: #f5d76e;
+      --panel-bg: rgba(8, 24, 18, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #0d3b2b, #0d3b2b 5px, #176147 5px, #176147 10px);
+    }
+
+    [data-theme="bourbon-brass"] {
+      --bg-gradient: radial-gradient(circle at center, #2b1b13 0%, #100907 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #70412a 0%, #4b271a 60%, #27130e 100%);
+      --felt-border: #cf9c4b;
+      --accent-color: #ffd27d;
+      --panel-bg: rgba(34, 18, 12, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #4c2519, #4c2519 5px, #743c25 5px, #743c25 10px);
+    }
+
+    [data-theme="arctic-aurora"] {
+      --bg-gradient: radial-gradient(circle at center, #122a38 0%, #061016 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1d7180 0%, #12505e 60%, #092b36 100%);
+      --felt-border: #9be8e5;
+      --accent-color: #b9fff8;
+      --panel-bg: rgba(8, 27, 35, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #123c4a, #123c4a 5px, #1e6672 5px, #1e6672 10px);
+    }
+
+    [data-theme="sunset-mirage"] {
+      --bg-gradient: radial-gradient(circle at center, #39172d 0%, #160813 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #a34247 0%, #762a42 60%, #3f142d 100%);
+      --felt-border: #ffad5a;
+      --accent-color: #ffd38a;
+      --panel-bg: rgba(42, 13, 31, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #6a1d42, #6a1d42 5px, #9e3152 5px, #9e3152 10px);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg-gradient);
@@ -536,6 +572,10 @@
         <option value="monte-carlo">Monte Carlo Platinum</option>
         <option value="synthwave">Retro 80s Synthwave</option>
         <option value="deep-space">Deep Space Obsidian</option>
+        <option value="emerald-noir">Emerald Noir</option>
+        <option value="bourbon-brass">Bourbon &amp; Brass</option>
+        <option value="arctic-aurora">Arctic Aurora</option>
+        <option value="sunset-mirage">Sunset Mirage</option>
       </select>
 
       <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
