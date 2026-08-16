@@ -123,6 +123,24 @@
       --card-back: repeating-linear-gradient(45deg, #1e3262, #1e3262 5px, #3d5b93 5px, #3d5b93 10px);
     }
 
+    [data-theme="jungle-canopy"] {
+      --bg-gradient: radial-gradient(circle at center, #17322a 0%, #07120c 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #2c7441 0%, #1b4f2d 60%, #0c2c1b 100%);
+      --felt-border: #7a4d22;
+      --accent-color: #f0ce62;
+      --panel-bg: rgba(10, 31, 19, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #1b4b29, #1b4b29 5px, #36733a 5px, #36733a 10px);
+    }
+
+    [data-theme="velvet-eclipse"] {
+      --bg-gradient: radial-gradient(circle at center, #24132d 0%, #0b0611 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #56335f 0%, #34203f 60%, #1b1025 100%);
+      --felt-border: #d29eff;
+      --accent-color: #ffd0f5;
+      --panel-bg: rgba(28, 13, 38, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #442255, #442255 5px, #70427d 5px, #70427d 10px);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg-gradient);
@@ -670,12 +688,22 @@
         <option value="arctic-aurora">Arctic Aurora</option>
         <option value="sunset-mirage">Sunset Mirage</option>
         <option value="aurora-royale">Aurora Royale</option>
+        <option value="jungle-canopy">Jungle Canopy</option>
+        <option value="velvet-eclipse">Velvet Eclipse</option>
       </select>
 
       <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
       <select id="audioToggle" onchange="toggleAudio(this.value === 'true')" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
         <option value="true">Sound Effects: Enabled 🔊</option>
         <option value="false">Sound Effects: Muted 🔇</option>
+      </select>
+
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Sound Theme</label>
+      <select id="soundThemeSelector" onchange="applySoundTheme(this.value)" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+        <option value="classic">Classic Casino</option>
+        <option value="jungle">Jungle Percussion</option>
+        <option value="neon">Neon Arcade</option>
+        <option value="lounge">Velvet Lounge</option>
       </select>
 
       <button class="modal-btn" onclick="toggleSettingsModal(false)">Save & Close</button>
@@ -855,6 +883,7 @@
   /* ================= THEMES & AUDIO ================= */
   let soundEnabled = localStorage.getItem('stud_sound') !== 'false';
   let savedTheme = localStorage.getItem('stud_theme') || CONFIG.DEFAULT_THEME || 'classic-vegas';
+  let soundTheme = localStorage.getItem('stud_sound_theme') || 'classic';
 
   function applyTheme(themeName) {
     document.body.setAttribute('data-theme', themeName);
@@ -866,6 +895,13 @@
     soundEnabled = enable;
     localStorage.setItem('stud_sound', enable);
     document.getElementById('audioToggle').value = enable ? 'true' : 'false';
+  }
+
+  function applySoundTheme(themeName) {
+    soundTheme = themeName;
+    localStorage.setItem('stud_sound_theme', themeName);
+    document.getElementById('soundThemeSelector').value = themeName;
+    playSound('chip');
   }
 
   function toggleSettingsModal(show) {
@@ -880,37 +916,74 @@
 
   applyTheme(savedTheme);
   toggleAudio(soundEnabled);
+  applySoundTheme(soundTheme);
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const SOUND_THEMES = {
+    classic: {
+      deal: [{ frequency: 450, endFrequency: 150, duration: 0.08, volume: 0.18, type: 'triangle' }],
+      chip: [{ frequency: 1200, endFrequency: 800, duration: 0.06, volume: 0.12, type: 'sine' }],
+      win: [
+        { frequency: 523.25, duration: 0.16, volume: 0.16, type: 'triangle' },
+        { frequency: 659.25, duration: 0.16, volume: 0.16, type: 'triangle', delay: 0.1 },
+        { frequency: 783.99, duration: 0.26, volume: 0.18, type: 'triangle', delay: 0.2 }
+      ]
+    },
+    jungle: {
+      deal: [{ frequency: 240, endFrequency: 130, duration: 0.09, volume: 0.16, type: 'sine' }],
+      chip: [
+        { frequency: 170, duration: 0.06, volume: 0.14, type: 'triangle' },
+        { frequency: 245, duration: 0.06, volume: 0.1, type: 'triangle', delay: 0.05 }
+      ],
+      win: [
+        { frequency: 261.63, duration: 0.14, volume: 0.16, type: 'sine' },
+        { frequency: 329.63, duration: 0.14, volume: 0.15, type: 'sine', delay: 0.11 },
+        { frequency: 392, duration: 0.3, volume: 0.18, type: 'sine', delay: 0.22 }
+      ]
+    },
+    neon: {
+      deal: [{ frequency: 720, endFrequency: 300, duration: 0.06, volume: 0.12, type: 'square' }],
+      chip: [{ frequency: 1480, endFrequency: 1040, duration: 0.05, volume: 0.09, type: 'square' }],
+      win: [
+        { frequency: 659.25, duration: 0.1, volume: 0.12, type: 'square' },
+        { frequency: 880, duration: 0.1, volume: 0.12, type: 'square', delay: 0.08 },
+        { frequency: 1318.51, duration: 0.26, volume: 0.14, type: 'square', delay: 0.16 }
+      ]
+    },
+    lounge: {
+      deal: [{ frequency: 330, endFrequency: 220, duration: 0.12, volume: 0.1, type: 'sine' }],
+      chip: [{ frequency: 880, endFrequency: 660, duration: 0.09, volume: 0.08, type: 'sine' }],
+      win: [
+        { frequency: 440, duration: 0.18, volume: 0.11, type: 'sine' },
+        { frequency: 554.37, duration: 0.18, volume: 0.1, type: 'sine', delay: 0.12 },
+        { frequency: 659.25, duration: 0.34, volume: 0.13, type: 'sine', delay: 0.24 }
+      ]
+    }
+  };
+
+  function playTone(note) {
+    const start = audioCtx.currentTime + (note.delay || 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = note.type || 'sine';
+    osc.frequency.setValueAtTime(note.frequency, start);
+    if (note.endFrequency && note.endFrequency !== note.frequency) {
+      osc.frequency.exponentialRampToValueAtTime(note.endFrequency, start + note.duration);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(note.volume, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + note.duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + note.duration + 0.02);
+  }
+
   function playSound(type) {
     if (!soundEnabled) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    if (type === 'deal') {
-      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.08);
-    } else if (type === 'chip') {
-      osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.06);
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.06);
-    } else if (type === 'win') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
-      osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-    }
+    (SOUND_THEMES[soundTheme] || SOUND_THEMES.classic)[type]?.forEach(playTone);
   }
 
   /* ================= NETWORKING ================= */
