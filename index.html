@@ -114,6 +114,15 @@
       --card-back: repeating-linear-gradient(45deg, #6a1d42, #6a1d42 5px, #9e3152 5px, #9e3152 10px);
     }
 
+    [data-theme="aurora-royale"] {
+      --bg-gradient: radial-gradient(circle at center, #12213b 0%, #070b1b 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #255c75 0%, #173b5b 60%, #0c1d39 100%);
+      --felt-border: #8d7dff;
+      --accent-color: #8ff7e3;
+      --panel-bg: rgba(12, 22, 52, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #1e3262, #1e3262 5px, #3d5b93 5px, #3d5b93 10px);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg-gradient);
@@ -660,6 +669,7 @@
         <option value="bourbon-brass">Bourbon &amp; Brass</option>
         <option value="arctic-aurora">Arctic Aurora</option>
         <option value="sunset-mirage">Sunset Mirage</option>
+        <option value="aurora-royale">Aurora Royale</option>
       </select>
 
       <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>

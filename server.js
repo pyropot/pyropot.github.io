@@ -112,7 +112,7 @@ function isAccountSeated(accountId) {
 }
 
 function persistPlayerBalance(player) {
-  if (!player || player.isBot || !player.accountId) return;
+  if (!player || player.isBot || !player.accountId) return Promise.resolve();
   const { accountId, id: socketId, chips } = player;
   const previousWrite = balanceWrites.get(accountId) || Promise.resolve();
   const write = previousWrite.catch(() => {}).then(async () => {
