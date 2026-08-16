@@ -788,10 +788,22 @@ function startStreetBetting(room, street) {
   const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (The River)' };
   sendRichLog(room.id, 'STREET', `🔔 <b>--- ${streetNames[street]} Betting Round ---</b>`);
 
+  const activePlayers = room.players.filter(p => !p.folded);
+  if (activePlayers.length <= 1) {
+    endHand(room, activePlayers[0]);
+    return;
+  }
+
+  const bettingPlayers = activePlayers.filter(p => p.chips > 0);
+  if (bettingPlayers.length <= 1) {
+    sendRichLog(room.id, 'ACTION', '🪙 All-in players automatically check; no further betting is possible.');
+    return advanceStreet(room);
+  }
+
   let highestVal = -1;
   let highestIdx = 0;
   room.players.forEach((p, idx) => {
-    if (!p.folded) {
+    if (!p.folded && p.chips > 0) {
       const upCards = p.cards.filter(c => c.isFaceUp);
       const lowHole = getPlayerLowHoleRank(p);
       const top = upCards.length ? Math.max(...upCards.map(c => isWild(c, room.ruleVariant, room.followRank, lowHole) ? 99 : c.value)) : 0;
@@ -818,7 +830,7 @@ function triggerTurn(room) {
 
   const p = room.players[room.activeTurnIndex];
   if (!p) return;
-  if (p.folded) {
+  if (p.folded || p.chips <= 0) {
     advanceTurn(room);
     return;
   }
@@ -919,10 +931,22 @@ function advanceTurn(room) {
   do {
     room.activeTurnIndex = (room.activeTurnIndex + 1) % room.players.length;
     count++;
-  } while (room.players[room.activeTurnIndex].folded && count < room.players.length);
+  } while ((room.players[room.activeTurnIndex].folded || room.players[room.activeTurnIndex].chips <= 0) && count < room.players.length);
 
-  const active = room.players.filter(p => !p.folded);
-  const allMatched = active.every(p => p.currentBet === room.highestBet);
+  const activePlayers = room.players.filter(p => !p.folded);
+  if (activePlayers.length <= 1) {
+    endHand(room, activePlayers[0]);
+    return;
+  }
+
+  const bettingPlayers = activePlayers.filter(p => p.chips > 0);
+  if (bettingPlayers.length <= 1) {
+    sendRichLog(room.id, 'ACTION', '🪙 All-in players automatically check; no further betting is possible.');
+    advanceStreet(room);
+    return;
+  }
+
+  const allMatched = bettingPlayers.every(p => p.currentBet === room.highestBet);
 
   if (allMatched && (room.activeTurnIndex === room.lastRaiserIndex || (room.highestBet === 0 && count >= room.players.length))) {
     advanceStreet(room);
