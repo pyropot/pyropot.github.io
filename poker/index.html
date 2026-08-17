@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>7-Card Stud Poker Deluxe</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at center, #142327 0%, #080f11 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #239b56 0%, #196f3d 60%, #0f4024 100%);
+      --felt-border: #3d2314;
+      --accent-color: #f1c40f;
+      --panel-bg: rgba(13, 23, 27, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #1c2833, #1c2833 5px, #273746 5px, #273746 10px);
+    }
+
+    [data-theme="midnight-blue"] {
+      --bg-gradient: radial-gradient(circle at center, #0e1e2d 0%, #050c13 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1b4f72 0%, #154360 60%, #0b2230 100%);
+      --felt-border: #1a252f;
+      --accent-color: #00d2d3;
+      --panel-bg: rgba(10, 20, 30, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #0b1a26, #0b1a26 5px, #142d40 5px, #142d40 10px);
+    }
+
+    [data-theme="crimson-vip"] {
+      --bg-gradient: radial-gradient(circle at center, #2b1114 0%, #100607 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #922b21 0%, #78281f 60%, #44140e 100%);
+      --felt-border: #2c120a;
+      --accent-color: #f39c12;
+      --panel-bg: rgba(30, 12, 14, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #3d0c0c, #3d0c0c 5px, #5c1414 5px, #5c1414 10px);
+    }
+
+    [data-theme="cyber-neon"] {
+      --bg-gradient: radial-gradient(circle at center, #1b0c29 0%, #08030d 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #4a154b 0%, #2e0854 60%, #160324 100%);
+      --felt-border: #00d2d3;
+      --accent-color: #ff007f;
+      --panel-bg: rgba(22, 7, 33, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #2b0438, #2b0438 5px, #4d0963 5px, #4d0963 10px);
+    }
+
+    [data-theme="golden-lounge"] {
+      --bg-gradient: radial-gradient(circle at center, #242217 0%, #0f0e08 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #4d4427 0%, #2e2815 60%, #1a160a 100%);
+      --felt-border: #7d6608;
+      --accent-color: #f1c40f;
+      --panel-bg: rgba(26, 23, 13, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #3b3311, #3b3311 5px, #5c501e 5px, #5c501e 10px);
+    }
+
+    [data-theme="monte-carlo"] {
+      --bg-gradient: radial-gradient(circle at center, #1e272c 0%, #0d1215 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #37474f 0%, #263238 60%, #171f22 100%);
+      --felt-border: #b0bec5;
+      --accent-color: #eceff1;
+      --panel-bg: rgba(23, 31, 34, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 5px, #455a64 5px, #455a64 10px);
+    }
+
+    [data-theme="synthwave"] {
+      --bg-gradient: radial-gradient(circle at center, #2e0854 0%, #120324 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #005f73 0%, #0a9396 60%, #001219 100%);
+      --felt-border: #ff007f;
+      --accent-color: #ee9b00;
+      --panel-bg: rgba(24, 7, 36, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #7b2cbf, #7b2cbf 5px, #9d4edd 5px, #9d4edd 10px);
+    }
+
+    [data-theme="deep-space"] {
+      --bg-gradient: radial-gradient(circle at center, #111111 0%, #000000 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1f1f1f 0%, #121212 60%, #050505 100%);
+      --felt-border: #333333;
+      --accent-color: #00ffcc;
+      --panel-bg: rgba(18, 18, 18, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #222222, #222222 5px, #333333 5px, #333333 10px);
+    }
+
+    [data-theme="emerald-noir"] {
+      --bg-gradient: radial-gradient(circle at center, #12231d 0%, #060c09 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #167552 0%, #0d4b36 60%, #062b20 100%);
+      --felt-border: #b6923d;
+      --accent-color: #f5d76e;
+      --panel-bg: rgba(8, 24, 18, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #0d3b2b, #0d3b2b 5px, #176147 5px, #176147 10px);
+    }
+
+    [data-theme="bourbon-brass"] {
+      --bg-gradient: radial-gradient(circle at center, #2b1b13 0%, #100907 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #70412a 0%, #4b271a 60%, #27130e 100%);
+      --felt-border: #cf9c4b;
+      --accent-color: #ffd27d;
+      --panel-bg: rgba(34, 18, 12, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #4c2519, #4c2519 5px, #743c25 5px, #743c25 10px);
+    }
+
+    [data-theme="arctic-aurora"] {
+      --bg-gradient: radial-gradient(circle at center, #122a38 0%, #061016 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #1d7180 0%, #12505e 60%, #092b36 100%);
+      --felt-border: #9be8e5;
+      --accent-color: #b9fff8;
+      --panel-bg: rgba(8, 27, 35, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #123c4a, #123c4a 5px, #1e6672 5px, #1e6672 10px);
+    }
+
+    [data-theme="sunset-mirage"] {
+      --bg-gradient: radial-gradient(circle at center, #39172d 0%, #160813 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #a34247 0%, #762a42 60%, #3f142d 100%);
+      --felt-border: #ffad5a;
+      --accent-color: #ffd38a;
+      --panel-bg: rgba(42, 13, 31, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #6a1d42, #6a1d42 5px, #9e3152 5px, #9e3152 10px);
+    }
+
+    [data-theme="aurora-royale"] {
+      --bg-gradient: radial-gradient(circle at center, #12213b 0%, #070b1b 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #255c75 0%, #173b5b 60%, #0c1d39 100%);
+      --felt-border: #8d7dff;
+      --accent-color: #8ff7e3;
+      --panel-bg: rgba(12, 22, 52, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #1e3262, #1e3262 5px, #3d5b93 5px, #3d5b93 10px);
+    }
+
+    [data-theme="jungle-canopy"] {
+      --bg-gradient: radial-gradient(circle at center, #17322a 0%, #07120c 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #2c7441 0%, #1b4f2d 60%, #0c2c1b 100%);
+      --felt-border: #7a4d22;
+      --accent-color: #f0ce62;
+      --panel-bg: rgba(10, 31, 19, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #1b4b29, #1b4b29 5px, #36733a 5px, #36733a 10px);
+    }
+
+    [data-theme="velvet-eclipse"] {
+      --bg-gradient: radial-gradient(circle at center, #24132d 0%, #0b0611 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #56335f 0%, #34203f 60%, #1b1025 100%);
+      --felt-border: #d29eff;
+      --accent-color: #ffd0f5;
+      --panel-bg: rgba(28, 13, 38, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #442255, #442255 5px, #70427d 5px, #70427d 10px);
+    }
+
+    [data-theme="coral-cove"] {
+      --bg-gradient: radial-gradient(circle at center, #102e3b 0%, #06131d 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #167783 0%, #115766 60%, #0a3547 100%);
+      --felt-border: #f28c7b;
+      --accent-color: #ffd08b;
+      --panel-bg: rgba(7, 31, 45, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #13556b, #13556b 5px, #207c8c 5px, #207c8c 10px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-gradient);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 10px;
+      overflow-x: hidden;
+      transition: background 0.4s ease;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 96vw;
+      max-width: 1040px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--accent-color);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    }
+    .header-btns { display: flex; gap: 8px; }
+    .icon-btn {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--accent-color);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+    /* LOBBY / TABLE BROWSER SCREEN */
+    .lobby-container {
+      width: 96vw;
+      max-width: 1040px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    @media (max-width: 840px) { .lobby-container { grid-template-columns: 1fr; } }
+
+    .account-summary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .account-summary strong { color: var(--accent-color); }
+    .account-summary .account-balance { color: #2ecc71; font-weight: 900; margin-left: auto; }
+    .account-btn {
+      border: 1px solid var(--accent-color);
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .account-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .lobby-card {
+      background: var(--panel-bg);
+      border: 2px solid var(--accent-color);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .lobby-card h2 {
+      font-size: 1.15rem;
+      color: var(--accent-color);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .lobby-card label { font-size: 0.78rem; color: #aaa; margin-top: 4px; display: block; }
+    .lobby-card input, .lobby-card select {
+      width: 100%;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      font-size: 0.9rem;
+    }
+
+    .table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    .table-item {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .table-item:hover { border-color: var(--accent-color); background: rgba(255,255,255,0.1); }
+    .table-info-title { font-size: 1rem; font-weight: bold; color: #fff; }
+    .table-info-meta { font-size: 0.78rem; color: #aaa; margin-top: 2px; }
+    .badge-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+    .badge-waiting { background: #27ae60; color: #fff; }
+    .badge-playing { background: #e67e22; color: #fff; }
+
+    /* GAME TABLE */
+    .game-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .table {
+      position: relative;
+      width: 96vw;
+      max-width: 1040px;
+      height: 580px;
+      background: var(--felt-gradient);
+      border: 18px solid var(--felt-border);
+      border-radius: 240px;
+      box-shadow: inset 0 0 60px rgba(0,0,0,0.85), 0 20px 50px rgba(0,0,0,0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 10px;
+      transition: all 0.4s ease;
+    }
+
+    .center-pot-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+    }
+    .pot-badge {
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid var(--accent-color);
+      padding: 8px 24px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    }
+    .pot-badge .pot-title { font-size: 0.7rem; color: #bbb; letter-spacing: 1px; }
+    .pot-badge .pot-amount { font-size: 1.6rem; color: var(--accent-color); font-weight: 900; }
+    .street-tag { font-size: 0.8rem; color: #00d2d3; font-weight: bold; }
+
+    .wild-hud {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--accent-color);
+      border-radius: 8px;
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .wild-hud-title { font-size: 0.65rem; color: var(--accent-color); font-weight: 900; letter-spacing: 0.5px; }
+    .compact-wild-card {
+      background: #fff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-weight: 900;
+      color: #111;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .compact-wild-suits { font-size: 0.7rem; display: inline-flex; gap: 1px; }
+    .suit-b { color: #111; }
+    .suit-r { color: #e74c3c; }
+
+    /* Seats */
+    .player-seat {
+      position: absolute;
+      background: var(--panel-bg);
+      border-radius: 14px;
+      padding: 8px 12px;
+      min-width: 175px;
+      border: 2px solid transparent;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .player-seat.active-turn {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 20px var(--accent-color);
+      transform: scale(1.03);
+    }
+    .player-seat.folded { opacity: 0.35; filter: grayscale(1); }
+    #seat-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }
+    #seat-1 { left: 15px; top: 44%; transform: translateY(-50%); }
+    #seat-2 { top: 12px; left: 50%; transform: translateX(-50%); }
+    #seat-3 { right: 15px; top: 44%; transform: translateY(-50%); }
+
+    .seat-header { display: flex; justify-content: space-between; align-items: center; }
+    .seat-name { font-size: 0.85rem; font-weight: bold; }
+    .seat-chips { font-size: 0.85rem; color: #2ecc71; font-weight: 900; }
+    .seat-badge { font-size: 0.65rem; color: var(--accent-color); font-weight: 600; margin-bottom: 4px; }
+    .seat-status { font-size: 0.75rem; color: #3498db; min-height: 15px; font-weight: 600; }
+
+    .cards-row { display: flex; gap: 4px; margin-top: 4px; min-height: 48px; }
+    .card {
+      width: 32px;
+      height: 46px;
+      background: #fff;
+      border-radius: 4px;
+      color: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      position: relative;
+      animation: dealSlide 0.25s ease-out;
+    }
+    @keyframes dealSlide {
+      from { transform: translateY(-15px) scale(0.8); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .card.red { color: #e74c3c; }
+    .card.back { background: var(--card-back); border: 1px solid #111; color: transparent; }
+    .card.is-wild::after {
+      content: '★';
+      position: absolute;
+      top: -5px; right: -2px;
+      color: #f39c12;
+      font-size: 11px;
+    }
+
+    /* Controls */
+    .control-dock {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--panel-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px 18px;
+      border-radius: 14px;
+      align-items: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      width: 96vw;
+      max-width: 1040px;
+      justify-content: space-between;
+    }
+    .action-group-left { display: flex; gap: 8px; }
+    .action-group-right { display: flex; gap: 10px; align-items: center; }
+
+    .btn {
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 900;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-fold { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); color: #fff; }
+    .btn-check { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); color: #fff; }
+    .btn-raise { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); color: #fff; }
+    .btn-start { background: linear-gradient(180deg, #f1c40f 0%, #d4ac0d 100%); color: #000; }
+    .btn-leave { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #ff7675; }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
+
+    .slider-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .preset-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #eee;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* SLIDE-OUT SIDEBAR LOG */
+    .sidebar-drawer {
+      position: fixed;
+      top: 0;
+      right: -380px;
+      width: 360px;
+      height: 100vh;
+      background: var(--panel-bg);
+      border-left: 2px solid var(--accent-color);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+      z-index: 2000;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-drawer.open { right: 0; }
+    .sidebar-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header h3 { font-size: 1.1rem; color: var(--accent-color); }
+    .sidebar-close-btn {
+      background: none; border: none; color: #aaa; font-size: 1.4rem; cursor: pointer;
+    }
+    .sidebar-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .log-item {
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+      padding: 6px 10px;
+      border-left: 3px solid #7f8c8d;
+      line-height: 1.35;
+    }
+    .log-badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 900;
+      margin-right: 4px;
+      text-transform: uppercase;
+    }
+    .badge-deal { background: #2980b9; color: #fff; border-left-color: #2980b9; }
+    .badge-action { background: #27ae60; color: #fff; border-left-color: #27ae60; }
+    .badge-wild { background: #8e44ad; color: #fff; border-left-color: #8e44ad; }
+    .badge-showdown { background: #f39c12; color: #000; border-left-color: #f39c12; }
+    .badge-street { background: #d35400; color: #fff; border-left-color: #d35400; }
+    .badge-river { background: #16a085; color: #fff; border-left-color: #16a085; }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--accent-color);
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 460px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.9);
+      text-align: center;
+    }
+    .modal-box h2 { color: var(--accent-color); margin-bottom: 14px; }
+    .modal-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .river-choices { display: flex; gap: 15px; margin: 20px 0; justify-content: center; }
+    .river-card-opt {
+      background: rgba(255,255,255,0.08);
+      border: 2px solid var(--accent-color);
+      border-radius: 12px;
+      padding: 15px;
+      width: 130px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .river-card-opt:hover { transform: translateY(-4px); }
+
+    .roll-cards-tray { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
+    .roll-select-card {
+      width: 50px;
+      height: 72px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #111;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 2px solid #ddd;
+      transition: all 0.2s;
+    }
+    .roll-select-card:hover {
+      border-color: var(--accent-color);
+      transform: scale(1.1);
+      box-shadow: 0 0 15px var(--accent-color);
+    }
+    .roll-select-card.red { color: #e74c3c; }
+
+    @media (max-width: 600px) {
+      body { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+      header { width: 100%; margin-bottom: 4px; gap: 6px; flex-wrap: wrap; }
+      h1 { font-size: 1.05rem; letter-spacing: 0; }
+      .header-btns { width: 100%; gap: 4px; display: grid; grid-template-columns: repeat(3, 1fr); }
+      .icon-btn { padding: 8px 4px; font-size: 0.7rem; justify-content: center; }
+      .lobby-container, .control-dock { width: 100%; }
+      .lobby-container { gap: 10px; margin-top: 4px; }
+      .lobby-card { padding: 14px; }
+      .table-list { max-height: 330px; }
+      .table-item { padding: 10px; gap: 8px; }
+      .table-info-title { font-size: 0.9rem; }
+      .table-info-meta { font-size: 0.7rem; }
+      .table {
+        width: 100%;
+        height: min(64svh, 560px);
+        min-height: 400px;
+        border-width: 10px;
+        border-radius: 34px;
+        margin-bottom: 6px;
+      }
+      .player-seat { min-width: 112px; padding: 6px 7px; border-radius: 9px; }
+      .seat-name, .seat-chips { font-size: 0.7rem; }
+      .seat-badge, .seat-status { font-size: 0.58rem; }
+      .cards-row { gap: 2px; min-height: 38px; }
+      .card { width: 24px; height: 35px; font-size: 0.58rem; }
+      #seat-0 { bottom: 7px; }
+      #seat-1 { left: 5px; top: 45%; }
+      #seat-2 { top: 7px; }
+      #seat-3 { right: 5px; top: 45%; }
+      .pot-badge { padding: 6px 16px; }
+      .pot-badge .pot-amount { font-size: 1.25rem; }
+      .wild-hud { max-width: 180px; flex-wrap: wrap; justify-content: center; }
+      .control-dock { padding: 8px; gap: 7px; justify-content: center; }
+      .action-group-left, .action-group-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+      .btn { padding: 9px 12px; font-size: 0.82rem; }
+      .slider-box { width: 100%; padding: 6px; gap: 5px; justify-content: center; }
+      #raiseSlider { width: 120px; }
+      .preset-btn { padding: 4px 5px; font-size: 0.67rem; }
+      .sidebar-drawer { width: 92vw; right: -94vw; }
+      .modal-box { width: calc(100% - 24px); max-height: calc(100vh - 24px); overflow-y: auto; padding: 18px; }
+      .river-choices { gap: 8px; }
+      .river-card-opt { width: 45%; padding: 10px; }
+    }
+
+    @media (max-width: 390px) {
+      .player-seat { min-width: 102px; padding: 5px 6px; }
+      .card { width: 22px; height: 33px; }
+      .table { min-height: 385px; }
+      .pot-badge { padding: 5px 12px; }
+      .icon-btn { font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Slide-Out Sidebar Log -->
+  <div class="sidebar-drawer" id="sidebarDrawer">
+    <div class="sidebar-header">
+      <h3>📜 Casino Live History</h3>
+      <button class="sidebar-close-btn" onclick="toggleSidebar(false)">✕</button>
+    </div>
+    <div class="sidebar-content" id="sidebarLogContent">
+      <div class="log-item"><span class="log-badge badge-street">System</span>Connected to table feed.</div>
+    </div>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="modal-backdrop" id="accountModal" style="display:none;">
+    <div class="modal-box">
+      <h2>♠ Player Account</h2>
+      <p id="accountModalHint" style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Create an account or sign in to play.</p>
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Username</label>
+      <input type="text" id="accountUsernameInput" autocomplete="username" maxlength="20" placeholder="3–20 letters, numbers, or _" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Password</label>
+      <input type="password" id="accountPasswordInput" autocomplete="current-password" maxlength="128" placeholder="At least 8 characters" style="width:100%; padding:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+      <div id="accountAuthMessage" role="alert" style="min-height:20px; color:#ff8a80; font-size:0.82rem; margin-top:8px;"></div>
+      <button class="modal-btn" onclick="submitAccount('register')">Create Account</button>
+      <button class="account-btn" style="width:100%; margin-top:8px; padding:11px;" onclick="submitAccount('sign-in')">Sign In</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal" style="display:none;">
+    <div class="modal-box">
+      <h2>⚙️ Casino Settings</h2>
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Table & Felt Theme</label>
+      <select id="themeSelector" onchange="applyTheme(this.value)" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+        <option value="classic-vegas">Classic Vegas Green</option>
+        <option value="midnight-blue">Midnight Velvet Blue</option>
+        <option value="crimson-vip">High Roller Crimson</option>
+        <option value="cyber-neon">Cyberpunk Neon</option>
+        <option value="golden-lounge">Golden VIP Lounge</option>
+        <option value="monte-carlo">Monte Carlo Platinum</option>
+        <option value="synthwave">Retro 80s Synthwave</option>
+        <option value="deep-space">Deep Space Obsidian</option>
+        <option value="emerald-noir">Emerald Noir</option>
+        <option value="bourbon-brass">Bourbon &amp; Brass</option>
+        <option value="arctic-aurora">Arctic Aurora</option>
+        <option value="sunset-mirage">Sunset Mirage</option>
+        <option value="aurora-royale">Aurora Royale</option>
+        <option value="jungle-canopy">Jungle Canopy</option>
+        <option value="velvet-eclipse">Velvet Eclipse</option>
+        <option value="coral-cove">Coral Cove</option>
+      </select>
+
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
+      <select id="audioToggle" onchange="toggleAudio(this.value === 'true')" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+        <option value="true">Sound Effects: Enabled 🔊</option>
+        <option value="false">Sound Effects: Muted 🔇</option>
+      </select>
+
+      <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Sound Theme</label>
+      <select id="soundThemeSelector" onchange="applySoundTheme(this.value)" style="width:100%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border-radius:6px; border:1px solid #444;">
+        <option value="classic">Classic Casino</option>
+        <option value="jungle">Jungle Percussion</option>
+        <option value="neon">Neon Arcade</option>
+        <option value="lounge">Velvet Lounge</option>
+      </select>
+
+      <button class="modal-btn" onclick="toggleSettingsModal(false)">Save & Close</button>
+    </div>
+  </div>
+
+  <!-- River Choice Modal -->
+  <div class="modal-backdrop" id="riverModal" style="display:none;">
+    <div class="modal-box">
+      <h2>🌊 7th Street (The River)</h2>
+      <p style="color:#ccc; font-size:0.9rem;">Choose how to receive your final card:</p>
+      <div class="river-choices">
+        <div class="river-card-opt" onclick="chooseRiver(false)">
+          <div style="font-size:2rem; margin-bottom:6px;">🔒</div>
+          <div style="font-weight:bold;">Face Down</div>
+          <span style="font-size:0.7rem; color:#aaa;">Secret</span>
+        </div>
+        <div class="river-card-opt" onclick="chooseRiver(true)">
+          <div style="font-size:2rem; margin-bottom:6px;">👁️</div>
+          <div style="font-weight:bold;">Face Up</div>
+          <span style="font-size:0.7rem; color:#aaa;">Exposed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roll Your Own Pick Modal -->
+  <div class="modal-backdrop" id="rollModal" style="display:none;">
+    <div class="modal-box">
+      <h2>🎲 Roll Your Own</h2>
+      <p style="color:#ccc; font-size:0.9rem;">Click one of your hole cards to <b>ROLL FACE UP</b> to the table:</p>
+      <div class="roll-cards-tray" id="rollCardsTray"></div>
+    </div>
+  </div>
+
+  <header>
+    <h1 id="mainTitle">7-CARD STUD POKER</h1>
+    <div class="header-btns">
+      <button class="icon-btn" onclick="toggleSidebar(true)">📜 Live History</button>
+      <button class="icon-btn btn-leave" id="leaveBtn" onclick="leaveTable()" style="display:none;">🚪 Leave Table</button>
+      <button class="icon-btn" onclick="toggleSettingsModal(true)">⚙️ Settings & Themes</button>
+    </div>
+  </header>
+
+  <!-- LOBBY SCREEN / TABLE BROWSER -->
+  <div class="lobby-container" id="lobbyView">
+    <div class="lobby-card">
+      <h2>➕ Create a Table</h2>
+      <div class="account-summary" id="accountSummary">
+        <span>Not signed in</span>
+        <button class="account-btn" onclick="openAccountModal()">Sign in</button>
+      </div>
+
+      <label>Table Name</label>
+      <input type="text" id="tableNameInput" placeholder="e.g. Vegas VIP Table" value="Vegas VIP Table">
+
+      <label>House Rules & Variants</label>
+      <select id="ruleVariantInput">
+        <option value="standard">Standard 7-Card Stud</option>
+        <option value="deuces">Deuces Wild (2s Wild)</option>
+        <option value="follow">Follow the Queen (Queens & Follower Wild)</option>
+        <option value="seven_makes">Seven & What Makes It (7s & sums of 7 Wild)</option>
+        <option value="low_hole">Low Hole Wild (Lowest Hole Card Wild)</option>
+        <option value="roll_your_own">Roll Your Own (Tahoe Stud / Choose Roll)</option>
+      </select>
+
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label>Starting Chips</label>
+          <select id="startingChipsInput">
+            <option value="50">$50</option>
+            <option value="100" selected>$100</option>
+            <option value="200">$200</option>
+            <option value="500">$500</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>Ante</label>
+          <select id="anteInput">
+            <option value="1" selected>$1</option>
+            <option value="2">$2</option>
+            <option value="5">$5</option>
+            <option value="10">$10</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Bot Lineup (When bots are added)</label>
+      <select id="botSetInput">
+        <option value="alex,sam,jordan">Mixed (Alex, Sam, Jordan)</option>
+        <option value="alex,jax,jordan">High Aggression (Alex, Jax, Jordan)</option>
+        <option value="sam,victoria,jordan">Passive & Gamblers (Sam, Victoria, Jordan)</option>
+        <option value="jax,jax,alex">All Maniacs (Jax, Jax, Alex)</option>
+      </select>
+
+      <button class="modal-btn" onclick="createTable()">Create & Sit At Table</button>
+    </div>
+
+    <div class="lobby-card">
+      <h2>🎰 Live Casino Tables</h2>
+      <div class="table-list" id="tableListContainer">
+        <div style="text-align:center; color:#888; padding:30px;">Loading tables...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVE GAME TABLE VIEW -->
+  <div class="game-view" id="gameView">
+    <div class="table">
+      <div class="center-pot-area">
+        <div class="pot-badge">
+          <div class="pot-title">TOTAL POT</div>
+          <div class="pot-amount" id="potText">$0</div>
+        </div>
+        <div class="street-tag" id="streetText">Waiting for Players...</div>
+        <div class="wild-hud">
+          <span class="wild-hud-title">WILDS:</span>
+          <div id="wildCardsContainer" style="display:flex; gap:4px;"><span style="font-size:0.75rem; color:#888;">None</span></div>
+        </div>
+      </div>
+
+      <!-- 4 Seats -->
+      <div class="player-seat" id="seat-0">
+        <div class="seat-header"><span class="seat-name" id="name-0">Empty</span><span class="seat-chips" id="chips-0">$0</span></div>
+        <div class="seat-badge" id="badge-0">👑 Table Host</div>
+        <div class="seat-status" id="status-0"></div>
+        <div class="cards-row" id="cards-0"></div>
+      </div>
+
+      <div class="player-seat" id="seat-1">
+        <div class="seat-header"><span class="seat-name" id="name-1">Empty</span><span class="seat-chips" id="chips-1">$0</span></div>
+        <div class="seat-badge" id="badge-1">Seat 2</div>
+        <div class="seat-status" id="status-1"></div>
+        <div class="cards-row" id="cards-1"></div>
+      </div>
+
+      <div class="player-seat" id="seat-2">
+        <div class="seat-header"><span class="seat-name" id="name-2">Empty</span><span class="seat-chips" id="chips-2">$0</span></div>
+        <div class="seat-badge" id="badge-2">Seat 3</div>
+        <div class="seat-status" id="status-2"></div>
+        <div class="cards-row" id="cards-2"></div>
+      </div>
+
+      <div class="player-seat" id="seat-3">
+        <div class="seat-header"><span class="seat-name" id="name-3">Empty</span><span class="seat-chips" id="chips-3">$0</span></div>
+        <div class="seat-badge" id="badge-3">Seat 4</div>
+        <div class="seat-status" id="status-3"></div>
+        <div class="cards-row" id="cards-3"></div>
+      </div>
+    </div>
+
+    <!-- Actions Dock -->
+    <div class="control-dock">
+      <div class="action-group-left">
+        <button class="btn btn-fold" id="btnFold" onclick="sendAction('fold')" disabled>Fold</button>
+        <button class="btn btn-check" id="btnCheck" onclick="sendAction('check')" disabled>Check</button>
+      </div>
+
+      <div class="action-group-right">
+        <div class="slider-box">
+          <span style="font-size:0.85rem; font-weight:bold;">Bet:</span>
+          <input type="range" id="raiseSlider" min="2" max="100" value="2" oninput="syncSlider(this.value)" disabled>
+          <span id="sliderValText" style="font-size:0.9rem; font-weight:bold; color:#2ecc71; min-width:35px;">$2</span>
+          <button class="preset-btn" onclick="presetRaise('min')">Min</button>
+          <button class="preset-btn" onclick="presetRaise('2x')">2x</button>
+          <button class="preset-btn" onclick="presetRaise('pot')">Pot</button>
+          <button class="preset-btn" onclick="presetRaise('max')">Max</button>
+        </div>
+
+        <button class="btn btn-raise" id="btnRaise" onclick="sendAction('raise')" disabled>Bet $2</button>
+        <button class="btn btn-start" id="btnStart" onclick="startHand(true)">Deal Hand (+Bots)</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* ================= THEMES & AUDIO ================= */
+  let soundEnabled = localStorage.getItem('stud_sound') !== 'false';
+  let savedTheme = localStorage.getItem('stud_theme') || CONFIG.DEFAULT_THEME || 'classic-vegas';
+  let soundTheme = localStorage.getItem('stud_sound_theme') || 'classic';
+
+  function applyTheme(themeName) {
+    document.body.setAttribute('data-theme', themeName);
+    localStorage.setItem('stud_theme', themeName);
+    document.getElementById('themeSelector').value = themeName;
+  }
+
+  function toggleAudio(enable) {
+    soundEnabled = enable;
+    localStorage.setItem('stud_sound', enable);
+    document.getElementById('audioToggle').value = enable ? 'true' : 'false';
+  }
+
+  function applySoundTheme(themeName, preview = true) {
+    soundTheme = themeName;
+    localStorage.setItem('stud_sound_theme', themeName);
+    document.getElementById('soundThemeSelector').value = themeName;
+    if (preview) playSound('chip');
+  }
+
+  function toggleSettingsModal(show) {
+    document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
+  }
+
+  function toggleSidebar(show) {
+    const drawer = document.getElementById('sidebarDrawer');
+    if (show) drawer.classList.add('open');
+    else drawer.classList.remove('open');
+  }
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  applyTheme(savedTheme);
+  toggleAudio(soundEnabled);
+  applySoundTheme(soundTheme, false);
+
+  const SOUND_THEMES = {
+    classic: {
+      deal: [{ frequency: 450, endFrequency: 150, duration: 0.08, volume: 0.18, type: 'triangle' }],
+      chip: [{ frequency: 1200, endFrequency: 800, duration: 0.06, volume: 0.12, type: 'sine' }],
+      win: [
+        { frequency: 523.25, duration: 0.16, volume: 0.16, type: 'triangle' },
+        { frequency: 659.25, duration: 0.16, volume: 0.16, type: 'triangle', delay: 0.1 },
+        { frequency: 783.99, duration: 0.26, volume: 0.18, type: 'triangle', delay: 0.2 }
+      ]
+    },
+    jungle: {
+      deal: [{ frequency: 240, endFrequency: 130, duration: 0.09, volume: 0.16, type: 'sine' }],
+      chip: [
+        { frequency: 170, duration: 0.06, volume: 0.14, type: 'triangle' },
+        { frequency: 245, duration: 0.06, volume: 0.1, type: 'triangle', delay: 0.05 }
+      ],
+      win: [
+        { frequency: 261.63, duration: 0.14, volume: 0.16, type: 'sine' },
+        { frequency: 329.63, duration: 0.14, volume: 0.15, type: 'sine', delay: 0.11 },
+        { frequency: 392, duration: 0.3, volume: 0.18, type: 'sine', delay: 0.22 }
+      ]
+    },
+    neon: {
+      deal: [{ frequency: 720, endFrequency: 300, duration: 0.06, volume: 0.12, type: 'square' }],
+      chip: [{ frequency: 1480, endFrequency: 1040, duration: 0.05, volume: 0.09, type: 'square' }],
+      win: [
+        { frequency: 659.25, duration: 0.1, volume: 0.12, type: 'square' },
+        { frequency: 880, duration: 0.1, volume: 0.12, type: 'square', delay: 0.08 },
+        { frequency: 1318.51, duration: 0.26, volume: 0.14, type: 'square', delay: 0.16 }
+      ]
+    },
+    lounge: {
+      deal: [{ frequency: 330, endFrequency: 220, duration: 0.12, volume: 0.1, type: 'sine' }],
+      chip: [{ frequency: 880, endFrequency: 660, duration: 0.09, volume: 0.08, type: 'sine' }],
+      win: [
+        { frequency: 440, duration: 0.18, volume: 0.11, type: 'sine' },
+        { frequency: 554.37, duration: 0.18, volume: 0.1, type: 'sine', delay: 0.12 },
+        { frequency: 659.25, duration: 0.34, volume: 0.13, type: 'sine', delay: 0.24 }
+      ]
+    }
+  };
+
+  function playTone(note) {
+    const start = audioCtx.currentTime + (note.delay || 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = note.type || 'sine';
+    osc.frequency.setValueAtTime(note.frequency, start);
+    if (note.endFrequency && note.endFrequency !== note.frequency) {
+      osc.frequency.exponentialRampToValueAtTime(note.endFrequency, start + note.duration);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(note.volume, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + note.duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + note.duration + 0.02);
+  }
+
+  function playSound(type) {
+    if (!soundEnabled) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    (SOUND_THEMES[soundTheme] || SOUND_THEMES.classic)[type]?.forEach(playTone);
+  }
+
+  /* ================= NETWORKING ================= */
+  const socket = io(CONFIG.SERVER_URL);
+  let currentRoomId = null;
+  let lastState = null;
+  let account = null;
+  const ACCOUNT_SESSION_KEY = 'stud_account_session';
+
+  function openAccountModal(message = '') {
+    document.getElementById('accountAuthMessage').innerText = message;
+    document.getElementById('accountModal').style.display = 'flex';
+  }
+
+  function closeAccountModal() {
+    document.getElementById('accountModal').style.display = 'none';
+    document.getElementById('accountAuthMessage').innerText = '';
+  }
+
+  function submitAccount(action) {
+    const username = document.getElementById('accountUsernameInput').value.trim();
+    const password = document.getElementById('accountPasswordInput').value;
+    document.getElementById('accountAuthMessage').innerText = '';
+    socket.emit(action === 'register' ? 'register_account' : 'sign_in', { username, password });
+  }
+
+  function formatDailyTime(milliseconds) {
+    const hours = Math.ceil(milliseconds / 3600000);
+    return hours <= 1 ? 'Ready soon' : `Ready in ${hours}h`;
+  }
+
+  function renderAccount() {
+    const summary = document.getElementById('accountSummary');
+    if (!account) {
+      summary.innerHTML = '<span>Not signed in</span><button class="account-btn" onclick="openAccountModal()">Sign in</button>';
+      return;
+    }
+    const dailyLabel = account.dailyAvailableIn > 0 ? formatDailyTime(account.dailyAvailableIn) : 'Claim +$500';
+    summary.innerHTML = `<strong>${account.username}</strong><span class="account-balance">$${account.chips}</span><button class="account-btn" onclick="claimDaily()" ${account.dailyAvailableIn > 0 || currentRoomId ? 'disabled' : ''}>${dailyLabel}</button><button class="account-btn" onclick="signOut()">Sign out</button>`;
+  }
+
+  function claimDaily() { socket.emit('claim_daily_chips'); }
+  function signOut() { socket.emit('sign_out'); }
+
+  function appendRichLog(category, text, time) {
+    const container = document.getElementById('sidebarLogContent');
+    const item = document.createElement('div');
+    item.className = 'log-item';
+
+    const catClass = `badge-${category.toLowerCase()}`;
+    item.innerHTML = `<span class="log-badge ${catClass}">${category}</span> <span style="color:#aaa; font-size:0.7rem;">[${time || ''}]</span> ${text}`;
+    container.appendChild(item);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function createTable() {
+    if (!account) return openAccountModal('Sign in before creating a table.');
+    const tableName = document.getElementById('tableNameInput').value.trim() || 'Vegas Table';
+    const ruleVariant = document.getElementById('ruleVariantInput').value;
+    const startingChips = document.getElementById('startingChipsInput').value;
+    const ante = document.getElementById('anteInput').value;
+    const botLineup = document.getElementById('botSetInput').value.split(',');
+
+    socket.emit('create_room', { tableName, ruleVariant, startingChips, ante, botLineup });
+  }
+
+  function joinTable(roomId) {
+    if (!account) return openAccountModal('Sign in before joining a table.');
+    socket.emit('join_room', { roomId });
+  }
+
+  function leaveTable() {
+    if (currentRoomId) socket.emit('leave_room', { roomId: currentRoomId });
+  }
+
+  function startHand(fillBots) {
+    if (currentRoomId) {
+      const customBots = document.getElementById('botSetInput').value.split(',');
+      socket.emit('start_hand', { roomId: currentRoomId, fillBots, customBots });
+      playSound('chip');
+    }
+  }
+
+  function sendAction(action) {
+    const raiseVal = parseInt(document.getElementById('raiseSlider').value, 10);
+    socket.emit('take_action', { roomId: currentRoomId, action, raiseAmt: raiseVal });
+    playSound('chip');
+  }
+
+  socket.on('joined_room', ({ roomId }) => {
+    currentRoomId = roomId;
+    document.getElementById('lobbyView').style.display = 'none';
+    document.getElementById('gameView').style.display = 'flex';
+    document.getElementById('leaveBtn').style.display = 'flex';
+    renderAccount();
+  });
+
+  socket.on('left_room', () => {
+    currentRoomId = null;
+    document.getElementById('lobbyView').style.display = 'grid';
+    document.getElementById('gameView').style.display = 'none';
+    document.getElementById('leaveBtn').style.display = 'none';
+    document.getElementById('mainTitle').innerText = '7-CARD STUD POKER';
+    renderAccount();
+  });
+
+  socket.on('error_msg', (msg) => alert(msg));
+
+  socket.on('auth_error', (message) => openAccountModal(message));
+
+  socket.on('account_notice', (message) => alert(message));
+
+  socket.on('account_state', (state) => {
+    account = state;
+    if (state?.sessionToken) localStorage.setItem(ACCOUNT_SESSION_KEY, state.sessionToken);
+    if (!state) localStorage.removeItem(ACCOUNT_SESSION_KEY);
+    renderAccount();
+    if (state) closeAccountModal();
+    else if (!currentRoomId) openAccountModal();
+  });
+
+  socket.on('connect', () => {
+    const sessionToken = localStorage.getItem(ACCOUNT_SESSION_KEY);
+    if (sessionToken) socket.emit('restore_session', { sessionToken });
+    else openAccountModal();
+  });
+
+  setInterval(() => {
+    if (!account || account.dailyAvailableIn <= 0) return;
+    account.dailyAvailableIn = Math.max(0, account.dailyAvailableIn - 60_000);
+    renderAccount();
+  }, 60_000);
+
+  socket.on('rich_log', (data) => {
+    appendRichLog(data.category, data.text, data.time);
+  });
+
+  socket.on('rooms_list', (rooms) => {
+    const container = document.getElementById('tableListContainer');
+    if (!rooms || rooms.length === 0) {
+      container.innerHTML = `<div style="text-align:center; color:#888; padding:30px;">No active tables. Create one on the left to start playing!</div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    const ruleLabels = {
+      standard: 'Standard',
+      deuces: 'Deuces Wild',
+      follow: 'Follow the Queen',
+      seven_makes: '7 & What Makes It',
+      low_hole: 'Low Hole Wild',
+      roll_your_own: 'Roll Your Own'
+    };
+
+    rooms.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'table-item';
+      const statusBadge = r.status === 'playing' ? '<span class="badge-status badge-playing">In Hand</span>' : '<span class="badge-status badge-waiting">Open Seats</span>';
+
+      item.innerHTML = `
+        <div>
+          <div class="table-info-title">${r.name} ${statusBadge}</div>
+          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleLabels[r.ruleVariant] || 'Standard'}</b> | Ante: <b>$${r.ante || 1}</b> | Players: <b>${r.playerCount}/4</b></div>
+        </div>
+        <button class="btn btn-raise" style="padding:6px 14px; font-size:0.85rem;" onclick="joinTable('${r.id}')" ${r.playerCount >= 4 ? 'disabled' : ''}>${r.playerCount >= 4 ? 'Full' : 'Join Table'}</button>
+      `;
+      container.appendChild(item);
+    });
+  });
+
+  socket.on('prompt_river_modal', () => {
+    document.getElementById('riverModal').style.display = 'flex';
+  });
+
+  function chooseRiver(faceUp) {
+    document.getElementById('riverModal').style.display = 'none';
+    socket.emit('river_choice', { roomId: currentRoomId, faceUp });
+    playSound('deal');
+  }
+
+  socket.on('prompt_roll_modal', () => {
+    const hero = lastState?.players.find(p => p.id === socket.id);
+    if (!hero) return;
+    const tray = document.getElementById('rollCardsTray');
+    tray.innerHTML = '';
+
+    hero.cards.forEach((card, idx) => {
+      if (!card.isFaceUp && card.rank) {
+        const isRed = card.suit === '♥' || card.suit === '♦';
+        const cardBtn = document.createElement('div');
+        cardBtn.className = `roll-select-card ${isRed ? 'red' : ''}`;
+        cardBtn.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+        cardBtn.onclick = () => {
+          document.getElementById('rollModal').style.display = 'none';
+          socket.emit('roll_card_choice', { roomId: currentRoomId, cardIndex: idx });
+          playSound('deal');
+        };
+        tray.appendChild(cardBtn);
+      }
+    });
+
+    document.getElementById('rollModal').style.display = 'flex';
+  });
+
+  socket.on('game_state', (state) => {
+    lastState = state;
+    playSound('deal');
+    document.getElementById('mainTitle').innerText = state.tableName.toUpperCase();
+    document.getElementById('potText').innerText = `$${state.pot}`;
+
+    const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)', 8: 'Showdown' };
+    document.getElementById('streetText').innerText = state.status === 'waiting' ? 'Waiting for Host to Deal...' : (streetNames[state.currentStreet] || 'Playing');
+
+    const isHost = state.hostId === socket.id;
+    const startBtn = document.getElementById('btnStart');
+    if (state.status === 'waiting') {
+      startBtn.style.display = isHost ? 'block' : 'none';
+      startBtn.innerText = 'Deal Hand (+Bots)';
+      startBtn.disabled = false;
+    } else {
+      startBtn.style.display = 'none';
+    }
+
+    // Dynamic Wilds HUD Display
+    const wildContainer = document.getElementById('wildCardsContainer');
+    wildContainer.innerHTML = '';
+    
+    if (state.ruleVariant === 'deuces') {
+      renderWildBadge('2');
+    } else if (state.ruleVariant === 'follow') {
+      renderWildBadge('Q');
+      if (state.followRank) renderWildBadge(state.followRank);
+    } else if (state.ruleVariant === 'seven_makes') {
+      renderWildBadge('7');
+      wildContainer.innerHTML += '<span style="font-size:0.75rem; color:#f1c40f; margin-left:4px;">(+ Sums to 7: A+6, 2+5, 3+4)</span>';
+    } else if (state.ruleVariant === 'low_hole') {
+      const hero = state.players.find(p => p.id === socket.id);
+      const lowHoleTxt = hero?.lowHoleRank ? `Your Wild: ${hero.lowHoleRank}s` : 'Lowest Hole Card Wild';
+      wildContainer.innerHTML = `<span style="font-size:0.75rem; color:#00d2d3; font-weight:bold;">${lowHoleTxt}</span>`;
+    } else if (state.ruleVariant === 'roll_your_own') {
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#2ecc71;">Tahoe Stud (Roll Own)</span>';
+    } else {
+      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">None</span>';
+    }
+
+    function renderWildBadge(rank) {
+      const c = document.createElement('div');
+      c.className = 'compact-wild-card';
+      c.innerHTML = `<span>${rank}</span><span class="compact-wild-suits"><span class="suit-b">♠</span><span class="suit-r">♥</span><span class="suit-r">♦</span><span class="suit-b">♣</span></span>`;
+      wildContainer.appendChild(c);
+    }
+
+    // Render Seats
+    for (let idx = 0; idx < 4; idx++) {
+      const p = state.players[idx];
+      const seat = document.getElementById(`seat-${idx}`);
+
+      if (!p) {
+        document.getElementById(`name-${idx}`).innerText = 'Open Seat';
+        document.getElementById(`chips-${idx}`).innerText = '$0';
+        document.getElementById(`status-${idx}`).innerText = '';
+        document.getElementById(`cards-${idx}`).innerHTML = '';
+        seat.classList.remove('active-turn', 'folded');
+        continue;
+      }
+
+      document.getElementById(`name-${idx}`).innerText = p.name + (p.id === socket.id ? ' (You)' : '');
+      document.getElementById(`chips-${idx}`).innerText = `$${p.chips}`;
+      document.getElementById(`badge-${idx}`).innerText = p.badge || (p.id === state.hostId ? '👑 Table Host' : `Seat ${idx+1}`);
+      document.getElementById(`status-${idx}`).innerText = p.handDesc || (p.folded ? 'Folded' : '');
+
+      if (idx === state.activeTurnIndex && state.status === 'playing' && state.currentStreet < 8) seat.classList.add('active-turn');
+      else seat.classList.remove('active-turn');
+
+      if (p.folded) seat.classList.add('folded');
+      else seat.classList.remove('folded');
+
+      const cardBox = document.getElementById(`cards-${idx}`);
+      cardBox.innerHTML = '';
+      p.cards.forEach(card => {
+        const el = document.createElement('div');
+        if (card.rank) {
+          const isRed = card.suit === '♥' || card.suit === '♦';
+          el.className = `card ${isRed ? 'red' : ''} ${card.isWild ? 'is-wild' : ''}`;
+          el.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+        } else {
+          el.className = 'card back';
+        }
+        cardBox.appendChild(el);
+      });
+    }
+
+    // Action buttons
+    const activePlayer = state.players[state.activeTurnIndex];
+    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded && state.status === 'playing' && state.currentStreet < 8;
+
+    document.getElementById('btnFold').disabled = !isMyTurn;
+    document.getElementById('btnCheck').disabled = !isMyTurn;
+    document.getElementById('btnRaise').disabled = !isMyTurn;
+    document.getElementById('raiseSlider').disabled = !isMyTurn;
+
+    if (isMyTurn) {
+      const toCall = state.highestBet - activePlayer.currentBet;
+      document.getElementById('btnCheck').innerText = toCall > 0 ? `Call $${toCall}` : 'Check';
+
+      const minInc = state.currentStreet >= 5 ? 4 : 2;
+      const minLegal = Math.min(activePlayer.chips, toCall + minInc);
+      const slider = document.getElementById('raiseSlider');
+      slider.min = minLegal;
+      slider.max = activePlayer.chips;
+      slider.value = minLegal;
+      syncSlider(minLegal);
+    }
+
+    if (state.message && state.currentStreet === 8) {
+      playSound('win');
+    }
+  });
+
+  function syncSlider(val) {
+    document.getElementById('sliderValText').innerText = `$${val}`;
+    document.getElementById('btnRaise').innerText = `Bet $${val}`;
+  }
+
+  function presetRaise(type) {
+    if (!lastState) return;
+    const hero = lastState.players.find(p => p.id === socket.id);
+    if (!hero) return;
+
+    const toCall = lastState.highestBet - hero.currentBet;
+    const minInc = lastState.currentStreet >= 5 ? 4 : 2;
+    const minLegal = toCall + minInc;
+    const slider = document.getElementById('raiseSlider');
+
+    let target = minLegal;
+    if (type === 'min') target = minLegal;
+    if (type === '2x') target = minLegal * 2;
+    if (type === 'pot') target = Math.max(minLegal, lastState.pot);
+    if (type === 'max') target = hero.chips;
+
+    target = Math.min(hero.chips, Math.max(minLegal, target));
+    slider.value = target;
+    syncSlider(target);
+  }
+</script>
+</body>
+</html>
