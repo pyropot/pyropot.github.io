@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>7-Card Stud Poker Deluxe</title>
+  <meta name="description" content="One shared-account multiplayer poker room for Hold'em, Omaha, Draw, Stud, No Peek, and wild-card tables.">
+  <title>Pyropot Poker Room</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="config.js"></script>
   <style>
@@ -151,6 +152,15 @@
       --card-back: repeating-linear-gradient(45deg, #13556b, #13556b 5px, #207c8c 5px, #207c8c 10px);
     }
 
+    [data-theme="ember-mint"] {
+      --bg-gradient: radial-gradient(circle at 18% 14%, #4c201a 0%, #180d11 38%, #070b0d 100%);
+      --felt-gradient: radial-gradient(ellipse at center, #237764 0%, #155344 58%, #092d28 100%);
+      --felt-border: #c5633f;
+      --accent-color: #ffb66e;
+      --panel-bg: rgba(22, 16, 18, 0.96);
+      --card-back: repeating-linear-gradient(45deg, #173e38, #173e38 5px, #c05c3b 5px, #c05c3b 8px);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg-gradient);
@@ -193,6 +203,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      text-decoration: none;
       transition: all 0.2s;
     }
     .icon-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
@@ -332,6 +343,10 @@
     .pot-badge .pot-title { font-size: 0.7rem; color: #bbb; letter-spacing: 1px; }
     .pot-badge .pot-amount { font-size: 1.6rem; color: var(--accent-color); font-weight: 900; }
     .street-tag { font-size: 0.8rem; color: #00d2d3; font-weight: bold; }
+    .game-tag { font-size: 0.68rem; color: #fff; background: rgba(0,0,0,.48); border-radius: 999px; padding: 3px 9px; }
+    .community-row { min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .community-row .card { width: 34px; height: 49px; font-size: .75rem; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+    .community-row:empty { display: none; }
 
     .wild-hud {
       background: var(--panel-bg);
@@ -604,12 +619,14 @@
       box-shadow: 0 0 15px var(--accent-color);
     }
     .roll-select-card.red { color: #e74c3c; }
+    .roll-select-card.selected { transform: translateY(-8px); border-color: var(--accent-color); box-shadow: 0 0 15px var(--accent-color); }
+    .variant-help { margin: -2px 0 12px; color: #aaa; font-size: .76rem; line-height: 1.4; min-height: 32px; }
 
     @media (max-width: 600px) {
       body { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
       header { width: 100%; margin-bottom: 4px; gap: 6px; flex-wrap: wrap; }
       h1 { font-size: 1.05rem; letter-spacing: 0; }
-      .header-btns { width: 100%; gap: 4px; display: grid; grid-template-columns: repeat(3, 1fr); }
+      .header-btns { width: 100%; gap: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); }
       .icon-btn { padding: 8px 4px; font-size: 0.7rem; justify-content: center; }
       .lobby-container, .control-dock { width: 100%; }
       .lobby-container { gap: 10px; margin-top: 4px; }
@@ -709,6 +726,7 @@
         <option value="jungle-canopy">Jungle Canopy</option>
         <option value="velvet-eclipse">Velvet Eclipse</option>
         <option value="coral-cove">Coral Cove</option>
+        <option value="ember-mint">Ember Mint — New</option>
       </select>
 
       <label style="display:block; text-align:left; font-size:0.85rem; color:#aaa; margin-bottom:4px;">Audio Effects</label>
@@ -758,9 +776,20 @@
     </div>
   </div>
 
+  <!-- Five-card draw selector -->
+  <div class="modal-backdrop" id="drawModal" style="display:none;">
+    <div class="modal-box">
+      <h2>🂠 Draw Cards</h2>
+      <p style="color:#ccc; font-size:0.9rem;">Select up to four cards to replace, then draw. Select none to stand pat.</p>
+      <div class="roll-cards-tray" id="drawCardsTray"></div>
+      <button class="modal-btn" id="confirmDrawButton" onclick="submitDraw()">Stand Pat</button>
+    </div>
+  </div>
+
   <header>
-    <h1 id="mainTitle">7-CARD STUD POKER</h1>
+    <h1 id="mainTitle">PYROPOT POKER ROOM</h1>
     <div class="header-btns">
+      <a class="icon-btn" href="/">← Pyropot Lab</a>
       <button class="icon-btn" onclick="toggleSidebar(true)">📜 Live History</button>
       <button class="icon-btn btn-leave" id="leaveBtn" onclick="leaveTable()" style="display:none;">🚪 Leave Table</button>
       <button class="icon-btn" onclick="toggleSettingsModal(true)">⚙️ Settings & Themes</button>
@@ -779,19 +808,38 @@
       <label>Table Name</label>
       <input type="text" id="tableNameInput" placeholder="e.g. Vegas VIP Table" value="Vegas VIP Table">
 
-      <label>House Rules & Variants</label>
-      <select id="ruleVariantInput">
-        <option value="standard">Standard 7-Card Stud</option>
-        <option value="deuces">Deuces Wild (2s Wild)</option>
-        <option value="follow">Follow the Queen (Queens & Follower Wild)</option>
-        <option value="seven_makes">Seven & What Makes It (7s & sums of 7 Wild)</option>
-        <option value="low_hole">Low Hole Wild (Lowest Hole Card Wild)</option>
-        <option value="roll_your_own">Roll Your Own (Tahoe Stud / Choose Roll)</option>
+      <label>Game & House Rules</label>
+      <select id="ruleVariantInput" onchange="renderVariantHelp()">
+        <optgroup label="Community-card poker">
+          <option value="texas_holdem">Texas Hold'em</option>
+          <option value="omaha">Omaha</option>
+          <option value="big_o">Big O (5-Card Omaha)</option>
+        </optgroup>
+        <optgroup label="Draw poker">
+          <option value="five_card_draw">Five-Card Draw</option>
+          <option value="draw_deuces">Five-Card Draw — Deuces Wild</option>
+        </optgroup>
+        <optgroup label="Stud & no-peek poker">
+          <option value="seven_card_stud" selected>Seven-Card Stud</option>
+          <option value="five_card_stud">Five-Card Stud</option>
+          <option value="seven_card_no_peek">Seven-Card No Peek</option>
+          <option value="night_baseball">Night Baseball (No Peek, 3s & 9s Wild)</option>
+          <option value="deuces">Seven-Card Stud — Deuces Wild</option>
+          <option value="follow">Follow the Queen</option>
+          <option value="seven_makes">Seven & What Makes It</option>
+          <option value="low_hole">Low Hole Wild</option>
+          <option value="roll_your_own">Roll Your Own</option>
+          <option value="baseball">Baseball (3s & 9s Wild)</option>
+          <option value="dr_pepper">Dr Pepper (2s, 4s & 10s Wild)</option>
+          <option value="woolworth">Woolworth (5s & 10s Wild)</option>
+          <option value="kings_little">Kings & Little Ones</option>
+        </optgroup>
       </select>
+      <p class="variant-help" id="variantHelp"></p>
 
       <div style="display:flex; gap:10px;">
         <div style="flex:1;">
-          <label>Starting Chips</label>
+          <label>Bot Buy-in</label>
           <select id="startingChipsInput">
             <option value="50">$50</option>
             <option value="100" selected>$100</option>
@@ -800,7 +848,7 @@
           </select>
         </div>
         <div style="flex:1;">
-          <label>Ante</label>
+          <label>Per-hand Stake</label>
           <select id="anteInput">
             <option value="1" selected>$1</option>
             <option value="2">$2</option>
@@ -818,7 +866,7 @@
         <option value="jax,jax,alex">All Maniacs (Jax, Jax, Alex)</option>
       </select>
 
-      <button class="modal-btn" onclick="createTable()">Create & Sit At Table</button>
+      <button class="modal-btn" onclick="createTable()">Create Table With This Account</button>
     </div>
 
     <div class="lobby-card">
@@ -833,13 +881,15 @@
   <div class="game-view" id="gameView">
     <div class="table">
       <div class="center-pot-area">
+        <div class="game-tag" id="gameTypeText">Seven-Card Stud</div>
         <div class="pot-badge">
           <div class="pot-title">TOTAL POT</div>
           <div class="pot-amount" id="potText">$0</div>
         </div>
         <div class="street-tag" id="streetText">Waiting for Players...</div>
+        <div class="community-row" id="communityCards"></div>
         <div class="wild-hud">
-          <span class="wild-hud-title">WILDS:</span>
+          <span class="wild-hud-title" id="ruleHudTitle">RULE:</span>
           <div id="wildCardsContainer" style="display:flex; gap:4px;"><span style="font-size:0.75rem; color:#888;">None</span></div>
         </div>
       </div>
@@ -893,6 +943,7 @@
         </div>
 
         <button class="btn btn-raise" id="btnRaise" onclick="sendAction('raise')" disabled>Bet $2</button>
+        <button class="btn btn-start" id="btnReveal" onclick="revealNoPeekCard()" style="display:none;">Turn Next Card</button>
         <button class="btn btn-start" id="btnStart" onclick="startHand(true)">Deal Hand (+Bots)</button>
       </div>
     </div>
@@ -900,6 +951,32 @@
 
 <script>
   /* ================= THEMES & AUDIO ================= */
+  const VARIANT_INFO = {
+    texas_holdem: "Two private cards plus a five-card board. Make the best five-card hand from any combination.",
+    omaha: "Four private cards plus a five-card board. You must use exactly two hole cards and exactly three board cards.",
+    big_o: "Five private cards plus a five-card board. You must use exactly two hole cards and exactly three board cards.",
+    five_card_draw: "Five private cards, an opening bet, one draw of up to four cards, and a final bet.",
+    draw_deuces: "Five-Card Draw with every 2 acting as a wild card.",
+    seven_card_stud: "Two cards down, four cards up, then a final river card. Best five-card hand wins.",
+    five_card_stud: "One card down and four cards up, with a betting round after each street.",
+    seven_card_no_peek: "All seven cards stay unseen until you turn over enough cards to beat the current visible hand.",
+    night_baseball: "Seven-Card No Peek with every 3 and 9 wild.",
+    deuces: "Seven-Card Stud with every 2 wild.",
+    follow: "Queens are wild; the next exposed rank after a Queen becomes wild too.",
+    seven_makes: "7s are wild, as are A+6, 2+5, and 3+4 combinations.",
+    low_hole: "Your lowest-ranked hole card makes every card of that rank wild for you.",
+    roll_your_own: "Receive cards down and choose which one to roll face up on each street.",
+    baseball: "Seven-Card Stud with every 3 and 9 wild.",
+    dr_pepper: "Seven-Card Stud with every 2, 4, and 10 wild.",
+    woolworth: "Seven-Card Stud with every 5 and 10 wild.",
+    kings_little: "Kings and the rank of your lowest hole card are wild for you."
+  };
+
+  function renderVariantHelp() {
+    const value = document.getElementById('ruleVariantInput').value;
+    document.getElementById('variantHelp').innerText = VARIANT_INFO[value] || '';
+  }
+
   let soundEnabled = localStorage.getItem('stud_sound') !== 'false';
   let savedTheme = localStorage.getItem('stud_theme') || CONFIG.DEFAULT_THEME || 'classic-vegas';
   let soundTheme = localStorage.getItem('stud_sound_theme') || 'classic';
@@ -938,6 +1015,9 @@
   applyTheme(savedTheme);
   toggleAudio(soundEnabled);
   applySoundTheme(soundTheme, false);
+  const requestedGame = new URLSearchParams(location.search).get('game');
+  if (requestedGame && VARIANT_INFO[requestedGame]) document.getElementById('ruleVariantInput').value = requestedGame;
+  renderVariantHelp();
 
   const SOUND_THEMES = {
     classic: {
@@ -1010,7 +1090,8 @@
   let currentRoomId = null;
   let lastState = null;
   let account = null;
-  const ACCOUNT_SESSION_KEY = 'stud_account_session';
+  const ACCOUNT_SESSION_KEY = 'pyropot_poker_session';
+  const LEGACY_ACCOUNT_SESSION_KEY = 'stud_account_session';
 
   function openAccountModal(message = '') {
     document.getElementById('accountAuthMessage').innerText = message;
@@ -1105,7 +1186,11 @@
     document.getElementById('lobbyView').style.display = 'grid';
     document.getElementById('gameView').style.display = 'none';
     document.getElementById('leaveBtn').style.display = 'none';
-    document.getElementById('mainTitle').innerText = '7-CARD STUD POKER';
+    document.getElementById('btnReveal').style.display = 'none';
+    document.getElementById('drawModal').style.display = 'none';
+    document.getElementById('rollModal').style.display = 'none';
+    document.getElementById('riverModal').style.display = 'none';
+    document.getElementById('mainTitle').innerText = 'PYROPOT POKER ROOM';
     renderAccount();
   });
 
@@ -1118,16 +1203,24 @@
   socket.on('account_state', (state) => {
     account = state;
     if (state?.sessionToken) localStorage.setItem(ACCOUNT_SESSION_KEY, state.sessionToken);
-    if (!state) localStorage.removeItem(ACCOUNT_SESSION_KEY);
+    if (!state) {
+      localStorage.removeItem(ACCOUNT_SESSION_KEY);
+      localStorage.removeItem(LEGACY_ACCOUNT_SESSION_KEY);
+    }
     renderAccount();
     if (state) closeAccountModal();
-    else if (!currentRoomId) openAccountModal();
   });
 
   socket.on('connect', () => {
-    const sessionToken = localStorage.getItem(ACCOUNT_SESSION_KEY);
+    const sessionToken = localStorage.getItem(ACCOUNT_SESSION_KEY) || localStorage.getItem(LEGACY_ACCOUNT_SESSION_KEY);
+    if (sessionToken) localStorage.setItem(ACCOUNT_SESSION_KEY, sessionToken);
     if (sessionToken) socket.emit('restore_session', { sessionToken });
-    else openAccountModal();
+    else renderAccount();
+  });
+
+  socket.on('connect_error', () => {
+    if (currentRoomId) return;
+    document.getElementById('tableListContainer').innerHTML = '<div style="text-align:center; color:#aaa; padding:30px; line-height:1.5;"><b>Poker server is waking up…</b><br><span style="font-size:.78rem;">The lobby reconnects automatically.</span></div>';
   });
 
   setInterval(() => {
@@ -1148,15 +1241,6 @@
     }
 
     container.innerHTML = '';
-    const ruleLabels = {
-      standard: 'Standard',
-      deuces: 'Deuces Wild',
-      follow: 'Follow the Queen',
-      seven_makes: '7 & What Makes It',
-      low_hole: 'Low Hole Wild',
-      roll_your_own: 'Roll Your Own'
-    };
-
     rooms.forEach(r => {
       const item = document.createElement('div');
       item.className = 'table-item';
@@ -1165,9 +1249,9 @@
       item.innerHTML = `
         <div>
           <div class="table-info-title">${r.name} ${statusBadge}</div>
-          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Rules: <b>${ruleLabels[r.ruleVariant] || 'Standard'}</b> | Ante: <b>$${r.ante || 1}</b> | Players: <b>${r.playerCount}/4</b></div>
+          <div class="table-info-meta">Host: <b>${r.hostName}</b> | Game: <b>${r.gameLabel || 'Seven-Card Stud'}</b> | Stake: <b>$${r.ante || 1}</b> | Players: <b>${r.playerCount}/4</b></div>
         </div>
-        <button class="btn btn-raise" style="padding:6px 14px; font-size:0.85rem;" onclick="joinTable('${r.id}')" ${r.playerCount >= 4 ? 'disabled' : ''}>${r.playerCount >= 4 ? 'Full' : 'Join Table'}</button>
+        <button class="btn btn-raise" style="padding:6px 14px; font-size:0.85rem;" onclick="joinTable('${r.id}')" ${r.playerCount >= 4 || r.status === 'playing' ? 'disabled' : ''}>${r.playerCount >= 4 ? 'Full' : (r.status === 'playing' ? 'Hand in Progress' : 'Join Table')}</button>
       `;
       container.appendChild(item);
     });
@@ -1207,14 +1291,77 @@
     document.getElementById('rollModal').style.display = 'flex';
   });
 
+  let selectedDrawCards = new Set();
+
+  socket.on('prompt_draw_modal', () => {
+    const hero = lastState?.players.find(player => player.id === socket.id);
+    if (!hero) return;
+    selectedDrawCards = new Set();
+    const tray = document.getElementById('drawCardsTray');
+    tray.innerHTML = '';
+    hero.cards.forEach((card, index) => {
+      if (!card.rank) return;
+      const cardButton = document.createElement('button');
+      cardButton.type = 'button';
+      cardButton.className = `roll-select-card ${card.suit === '♥' || card.suit === '♦' ? 'red' : ''}`;
+      cardButton.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+      cardButton.onclick = () => toggleDrawCard(index, cardButton);
+      tray.appendChild(cardButton);
+    });
+    updateDrawButton();
+    document.getElementById('drawModal').style.display = 'flex';
+  });
+
+  function toggleDrawCard(index, cardButton) {
+    if (selectedDrawCards.has(index)) {
+      selectedDrawCards.delete(index);
+      cardButton.classList.remove('selected');
+    } else if (selectedDrawCards.size < 4) {
+      selectedDrawCards.add(index);
+      cardButton.classList.add('selected');
+    }
+    updateDrawButton();
+  }
+
+  function updateDrawButton() {
+    const count = selectedDrawCards.size;
+    document.getElementById('confirmDrawButton').innerText = count ? `Draw ${count} Card${count === 1 ? '' : 's'}` : 'Stand Pat';
+  }
+
+  function submitDraw() {
+    document.getElementById('drawModal').style.display = 'none';
+    socket.emit('draw_cards', { roomId: currentRoomId, cardIndexes: [...selectedDrawCards] });
+    playSound('deal');
+  }
+
+  function revealNoPeekCard() {
+    socket.emit('reveal_no_peek_card', { roomId: currentRoomId });
+    document.getElementById('btnReveal').disabled = true;
+    playSound('deal');
+  }
+
+  socket.on('prompt_no_peek_reveal', () => {
+    const button = document.getElementById('btnReveal');
+    button.style.display = 'block';
+    button.disabled = false;
+  });
+
   socket.on('game_state', (state) => {
     lastState = state;
     playSound('deal');
     document.getElementById('mainTitle').innerText = state.tableName.toUpperCase();
+    document.getElementById('gameTypeText').innerText = state.gameLabel || 'Poker';
     document.getElementById('potText').innerText = `$${state.pot}`;
+    document.getElementById('streetText').innerText = state.status === 'waiting' ? (state.message || 'Waiting for Host to Deal...') : (state.streetLabel || 'Playing');
 
-    const streetNames = { 3: '3rd Street', 4: '4th Street', 5: '5th Street', 6: '6th Street', 7: '7th Street (River)', 8: 'Showdown' };
-    document.getElementById('streetText').innerText = state.status === 'waiting' ? 'Waiting for Host to Deal...' : (streetNames[state.currentStreet] || 'Playing');
+    const board = document.getElementById('communityCards');
+    board.innerHTML = '';
+    (state.communityCards || []).forEach(card => {
+      const element = document.createElement('div');
+      element.className = `card ${card.suit === '♥' || card.suit === '♦' ? 'red' : ''}`;
+      element.innerHTML = `<span>${card.rank}</span><span>${card.suit}</span>`;
+      board.appendChild(element);
+    });
 
     const isHost = state.hostId === socket.id;
     const startBtn = document.getElementById('btnStart');
@@ -1226,26 +1373,43 @@
       startBtn.style.display = 'none';
     }
 
-    // Dynamic Wilds HUD Display
+    // Dynamic table-rule HUD
     const wildContainer = document.getElementById('wildCardsContainer');
+    const ruleHudTitle = document.getElementById('ruleHudTitle');
     wildContainer.innerHTML = '';
+    ruleHudTitle.innerText = 'RULE:';
     
-    if (state.ruleVariant === 'deuces') {
+    if (state.ruleVariant === 'deuces' || state.ruleVariant === 'draw_deuces') {
+      ruleHudTitle.innerText = 'WILDS:';
       renderWildBadge('2');
+    } else if (state.ruleVariant === 'baseball' || state.ruleVariant === 'night_baseball') {
+      ruleHudTitle.innerText = 'WILDS:';
+      renderWildBadge('3');
+      renderWildBadge('9');
+    } else if (state.ruleVariant === 'dr_pepper') {
+      ruleHudTitle.innerText = 'WILDS:';
+      ['2', '4', '10'].forEach(renderWildBadge);
+    } else if (state.ruleVariant === 'woolworth') {
+      ruleHudTitle.innerText = 'WILDS:';
+      ['5', '10'].forEach(renderWildBadge);
     } else if (state.ruleVariant === 'follow') {
+      ruleHudTitle.innerText = 'WILDS:';
       renderWildBadge('Q');
       if (state.followRank) renderWildBadge(state.followRank);
     } else if (state.ruleVariant === 'seven_makes') {
+      ruleHudTitle.innerText = 'WILDS:';
       renderWildBadge('7');
       wildContainer.innerHTML += '<span style="font-size:0.75rem; color:#f1c40f; margin-left:4px;">(+ Sums to 7: A+6, 2+5, 3+4)</span>';
-    } else if (state.ruleVariant === 'low_hole') {
+    } else if (state.ruleVariant === 'low_hole' || state.ruleVariant === 'kings_little') {
+      ruleHudTitle.innerText = 'WILDS:';
       const hero = state.players.find(p => p.id === socket.id);
       const lowHoleTxt = hero?.lowHoleRank ? `Your Wild: ${hero.lowHoleRank}s` : 'Lowest Hole Card Wild';
       wildContainer.innerHTML = `<span style="font-size:0.75rem; color:#00d2d3; font-weight:bold;">${lowHoleTxt}</span>`;
+      if (state.ruleVariant === 'kings_little') renderWildBadge('K');
     } else if (state.ruleVariant === 'roll_your_own') {
       wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#2ecc71;">Tahoe Stud (Roll Own)</span>';
     } else {
-      wildContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">None</span>';
+      wildContainer.innerHTML = `<span style="font-size:0.72rem; color:#bbb;">${state.gameSummary || 'Standard high-hand poker.'}</span>`;
     }
 
     function renderWildBadge(rank) {
@@ -1297,7 +1461,11 @@
 
     // Action buttons
     const activePlayer = state.players[state.activeTurnIndex];
-    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded && state.status === 'playing' && state.currentStreet < 8;
+    const isMyTurn = activePlayer && activePlayer.id === socket.id && !activePlayer.folded && state.status === 'playing' && state.currentStreet < 8 && !state.noPeekAwaitingReveal && !state.drawAwaitingChoice;
+    const revealButton = document.getElementById('btnReveal');
+    const isMyReveal = state.noPeekAwaitingReveal && state.noPeekChallengerId === socket.id;
+    revealButton.style.display = isMyReveal ? 'block' : 'none';
+    revealButton.disabled = !isMyReveal;
 
     document.getElementById('btnFold').disabled = !isMyTurn;
     document.getElementById('btnCheck').disabled = !isMyTurn;

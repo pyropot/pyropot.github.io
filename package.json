@@ -1,10 +1,11 @@
 {
-  "name": "seven-card-stud-poker",
+  "name": "pyropot-poker-room",
   "version": "2.0.0",
-  "description": "AAA 7-Card Stud Multiplayer Poker Game with Wildcard Variants & Themes",
+  "description": "Shared-account multiplayer poker room with community, draw, stud, no-peek, and wildcard tables",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test/poker-engine.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
