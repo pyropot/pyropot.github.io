@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ff4f9d">
+  <meta name="description" content="Heartbound // Re:Rise — an original all-women isekai dating-sim RPG from Pyropot Lab.">
+  <title>Heartbound // Re:Rise</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="truckchan-sunset">
+  <div class="sparkles" aria-hidden="true"></div>
+
+  <section class="title-screen" id="titleScreen">
+    <div class="title-art" aria-hidden="true"></div>
+    <a href="../" class="back-link">← PYROPOT LAB</a>
+    <div class="title-copy">
+      <p class="anime-tag">A FIVE-HEROINE ISEKAI DATING-SIM RPG</p>
+      <h1>HEARTBOUND<br><span>// RE:RISE</span></h1>
+      <p>Five women. Five lifetimes. One suspiciously multiversal delivery truck—and a Demon Queen who has never once been defeated by the power of love.</p>
+      <div class="title-actions">
+        <button class="cta" id="chooseOriginButton" type="button">CHOOSE YOUR REINCARNATION ✦</button>
+        <button id="continueButton" type="button" hidden>CONTINUE ADVENTURE</button>
+      </div>
+      <small>All heroines are adults. Your chosen heroine becomes the player; the other four become companions and romance routes.</small>
+    </div>
+  </section>
+
+  <section class="origin-screen" id="originScreen" aria-hidden="true">
+    <div class="origin-head">
+      <p class="anime-tag">PROLOGUE 00 · TRUCK-CHAN SELECTS A SOUL</p>
+      <h2>Who were you before this world?</h2>
+      <p>Each origin changes your class bonus, narration, and the four women available to romance this run.</p>
+    </div>
+    <div class="origin-grid" id="originGrid"></div>
+    <button class="close-origin" id="closeOriginButton" type="button">BACK</button>
+  </section>
+
+  <main class="game" id="game" hidden>
+    <header class="game-header">
+      <a href="../" class="game-brand">← LAB</a>
+      <div class="game-title"><b>HEARTBOUND // RE:RISE</b><small id="chapterLabel">CHAPTER 1 · FIVE FALLING STARS</small></div>
+      <div class="header-actions">
+        <button id="saveButton" type="button">SAVE</button>
+        <button id="themeButton" type="button">THEME ✦</button>
+      </div>
+    </header>
+
+    <section class="stage" id="stage" data-scene="arrival">
+      <div class="stage-bg" aria-hidden="true"></div>
+      <div class="magic-wash" aria-hidden="true"></div>
+
+      <aside class="party-rail">
+        <div class="rail-label">HEART PARTY</div>
+        <div id="partyRail"></div>
+        <div class="power-card"><span>PARTY POWER</span><strong id="partyPower">40</strong><small id="powerHint">Vespera: 140 recommended</small></div>
+      </aside>
+
+      <div class="scene-portrait" id="scenePortrait" aria-hidden="true"></div>
+      <div class="scene-badge" id="sceneBadge">THE KINGDOM OF AURELIA</div>
+
+      <section class="vn-box" aria-live="polite">
+        <div class="speaker-line"><span id="speaker">GODDESS COURIER</span><small id="sceneMeta">DAY 1 · LEVEL 1</small></div>
+        <p id="storyText"></p>
+        <div class="choice-grid" id="choices"></div>
+        <div class="vn-footer"><span id="autosaveStatus">AUTOSAVE READY</span><button id="partyButton" type="button">PARTY</button></div>
+      </section>
+    </section>
+  </main>
+
+  <aside class="side-panel theme-panel" id="themePanel" aria-hidden="true">
+    <div class="panel-heading"><div><small>MAGICAL FILTER</small><h2>Choose your anime theme</h2></div><button data-close-panel type="button">×</button></div>
+    <label class="theme-choice new"><input type="radio" name="theme" value="truckchan-sunset" checked><span><b>Truck-chan Sunset</b><small>NEW · maximum isekai sparkle</small></span></label>
+    <label class="theme-choice"><input type="radio" name="theme" value="shojo-sparkle"><span><b>Shōjo Sparkle</b><small>rose romance manga</small></span></label>
+    <label class="theme-choice"><input type="radio" name="theme" value="moonlit-dungeon"><span><b>Moonlit Dungeon</b><small>cool sapphire fantasy</small></span></label>
+    <label class="theme-choice"><input type="radio" name="theme" value="demon-rouge"><span><b>Demon Queen Rouge</b><small>black crystal danger</small></span></label>
+    <label class="theme-choice"><input type="radio" name="theme" value="retro-isekai"><span><b>Retro Isekai</b><small>90s cel-anime warmth</small></span></label>
+    <label class="toggle-row"><span>Reduced motion</span><input id="motionToggle" type="checkbox"></label>
+  </aside>
+
+  <aside class="side-panel party-panel" id="partyPanel" aria-hidden="true">
+    <div class="panel-heading"><div><small>REINCARNATED PARTY</small><h2>Levels & heart bonds</h2></div><button data-close-panel type="button">×</button></div>
+    <div id="partyDetails"></div>
+    <div class="legend"><span>♥ Bond 4 unlocks devotion</span><span>★ Level 5 masters a class</span></div>
+  </aside>
+
+  <section class="modal date-modal" id="dateModal" aria-hidden="true">
+    <div class="modal-card wide-card">
+      <div class="panel-heading"><div><small>CAMPFIRE FREE TIME</small><h2>Who will you spend the evening with?</h2></div><button data-close-modal type="button">×</button></div>
+      <div class="companion-grid" id="dateChoices"></div>
+    </div>
+  </section>
+
+  <section class="modal partner-modal" id="partnerModal" aria-hidden="true">
+    <div class="modal-card wide-card">
+      <div class="panel-heading"><div><small id="partnerKicker">CHOOSE A PARTNER</small><h2 id="partnerTitle">Who joins this trial?</h2></div><button data-close-modal type="button">×</button></div>
+      <div class="companion-grid" id="partnerChoices"></div>
+    </div>
+  </section>
+
+  <section class="modal sky-modal" id="skyModal" aria-hidden="true">
+    <div class="minigame-card">
+      <p class="anime-tag">SKY RING TRIAL · REFLEX CHALLENGE</p>
+      <h2>Fly the Heart Sprite</h2>
+      <p>Tap, click, or press Space to rise. Clear five crystal gates. Crashing changes the scene—it does not erase progress.</p>
+      <div class="skill-settings"><span>GATES <b id="gateCount">0 / 5</b></span><span>WINGS <b id="lifeCount">♥♥♥</b></span><label><input id="assistToggle" type="checkbox"> Cozy assist</label></div>
+      <canvas id="skyCanvas" width="760" height="330" aria-label="Flying heart obstacle game"></canvas>
+      <div class="minigame-actions"><button class="cta" id="startSkyButton" type="button">START FLIGHT</button><button id="flapButton" type="button" disabled>FLAP ↑</button><button data-close-modal type="button">LEAVE TRIAL</button></div>
+      <p class="skill-status" id="skyStatus">Your partner fastens the shared flight charm around both wrists.</p>
+    </div>
+  </section>
+
+  <section class="modal fate-modal" id="fateModal" aria-hidden="true">
+    <div class="minigame-card fate-card">
+      <p class="anime-tag">MOONVAULT MAHJONG · LUCK CHALLENGE</p>
+      <h2>Tempt the Tiles of Fate</h2>
+      <p>Build a pair, a three-tile run, or draw the rare Heart tile. You may redraw twice—but every redraw can wake the curse.</p>
+      <div class="tile-hand" id="tileHand"></div>
+      <div class="fate-stats"><span>REDRAWS <b id="redrawCount">2</b></span><span>CURSE <b id="curseCount">0 / 3</b></span><span>FATE VALUE <b id="fateValue">0</b></span></div>
+      <div class="minigame-actions"><button class="cta" id="drawTilesButton" type="button">DEAL THE TILES</button><button id="redrawTileButton" type="button" disabled>REDRAW WEAKEST</button><button id="bankFateButton" type="button" disabled>BANK THIS FATE</button><button data-close-modal type="button">LEAVE VAULT</button></div>
+      <p class="skill-status" id="fateStatus">The Moonvault will reward courage, luck, or a spectacularly romantic disaster.</p>
+    </div>
+  </section>
+
+  <section class="modal battle-modal" id="battleModal" aria-hidden="true">
+    <div class="battle-card">
+      <div class="boss-art" aria-hidden="true"></div>
+      <div class="battle-ui">
+        <p class="anime-tag">FINAL RAID · DEMON QUEEN VESPERA</p>
+        <h2 id="battleHeading">Love versus the end of the world</h2>
+        <div class="combat-bars"><label>HEART PARTY <span id="partyHpText">180 / 180</span><i><b id="partyHpBar"></b></i></label><label>VESPERA <span id="bossHpText">260 / 260</span><i><b id="bossHpBar"></b></i></label></div>
+        <p id="battleLog">Vespera raises the Eclipse Scepter. “Show me a bond stronger than despair.”</p>
+        <div class="battle-actions"><button data-battle="strike" type="button">⚔ CHAIN STRIKE</button><button data-battle="heart" type="button">♥ HEART RESONANCE</button><button data-battle="guard" type="button">✦ GUARD & STUDY</button></div>
+        <button class="retreat-button" id="retreatButton" type="button">RETREAT TO CAMP</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="modal ending-modal" id="endingModal" aria-hidden="true">
+    <div class="ending-card">
+      <p class="anime-tag" id="endingKicker">TRUE ENDING</p>
+      <h2 id="endingTitle"></h2>
+      <p id="endingText"></p>
+      <div class="ending-actions"><button class="cta" id="afterEndingButton" type="button">CONTINUE IN NEW GAME+</button><button id="restartButton" type="button">NEW REINCARNATION</button></div>
+      <small id="endingProgress"></small>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="game.js"></script>
+</body>
+</html>
