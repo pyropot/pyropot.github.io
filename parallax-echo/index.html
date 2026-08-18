@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07101a">
+  <meta name="description" content="Parallax // Echo — an original time-loop visual novel from Pyropot Lab.">
+  <title>Parallax // Echo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="solar-static">
+  <div class="grain" aria-hidden="true"></div>
+  <main class="game-shell" id="gameShell">
+    <header class="hud">
+      <a class="lab-link" href="../" aria-label="Back to Pyropot Lab"><span>←</span> PYROPOT LAB</a>
+      <div class="chapter"><span>PARALLAX // ECHO</span><small id="chapterLabel">ACT I · THE WHITE MINUTE</small></div>
+      <div class="hud-actions">
+        <button class="hud-button" id="soundButton" type="button" aria-pressed="false" title="Toggle sound">SOUND: OFF</button>
+        <button class="hud-button" id="settingsButton" type="button" aria-expanded="false">THEME</button>
+      </div>
+    </header>
+
+    <section class="scene" id="scene" aria-label="Story scene">
+      <div class="scene-image" aria-hidden="true"></div>
+      <div class="temporal-wash" aria-hidden="true"></div>
+      <div class="character character-left" id="maraPortrait" aria-hidden="true"><img src="assets/mara-venn.png" alt=""></div>
+      <div class="character character-right" id="niaPortrait" aria-hidden="true"><img src="assets/nia-calder.png" alt=""></div>
+
+      <div class="telemetry" aria-label="Timeline status">
+        <div class="telemetry-item"><span>LOCAL TIME</span><strong id="timeDisplay">21:04:00</strong></div>
+        <div class="telemetry-item"><span>LOOP</span><strong id="loopDisplay">01</strong></div>
+        <div class="meter-wrap"><span>STABILITY</span><div class="meter"><i id="stabilityMeter"></i></div><b id="stabilityDisplay">72%</b></div>
+        <div class="meter-wrap danger"><span>DRIFT</span><div class="meter"><i id="driftMeter"></i></div><b id="driftDisplay">0%</b></div>
+      </div>
+
+      <div class="signal-caption" id="signalCaption" aria-live="polite"></div>
+
+      <section class="dialogue" aria-live="polite" aria-atomic="true">
+        <div class="dialogue-meta"><span class="speaker" id="speaker">MARA VENN</span><span class="place" id="place">ROOFTOP LAB · 21:04</span></div>
+        <p class="story-text" id="storyText"></p>
+        <div class="choices" id="choices"></div>
+        <div class="dialogue-footer">
+          <span id="saveStatus">AUTOSAVE READY</span>
+          <div>
+            <button type="button" id="historyButton">LOG</button>
+            <button type="button" id="rewindButton">REWIND</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <section class="start-screen" id="startScreen">
+    <div class="start-art" aria-hidden="true"></div>
+    <div class="start-card">
+      <p class="kicker">AN ORIGINAL TIME-LOOP VISUAL NOVEL</p>
+      <h1>PARALLAX<br><span>// ECHO</span></h1>
+      <p class="premise">At 21:17, Bellwether City loses thirteen minutes. At 21:04, radio technician Mara Venn receives a warning in her own voice.</p>
+      <div class="start-actions">
+        <button class="primary" type="button" id="newGameButton">BEGIN ACT I</button>
+        <button type="button" id="continueButton" hidden>CONTINUE AUTOSAVE</button>
+      </div>
+      <p class="start-note">Choices persist across loops. Listen, remember, and learn when to go back.</p>
+    </div>
+  </section>
+
+  <aside class="panel settings-panel" id="settingsPanel" aria-hidden="true">
+    <div class="panel-head"><div><small>DISPLAY CHANNEL</small><h2>Choose a theme</h2></div><button type="button" data-close="settingsPanel" aria-label="Close theme panel">×</button></div>
+    <label class="theme-option new-theme"><input type="radio" name="theme" value="solar-static" checked><span><b>Solar Static</b><small>NEW · warm interference</small></span></label>
+    <label class="theme-option"><input type="radio" name="theme" value="midnight-signal"><span><b>Midnight Signal</b><small>cold rooftop blue</small></span></label>
+    <label class="theme-option"><input type="radio" name="theme" value="red-shift"><span><b>Red Shift</b><small>danger timeline</small></span></label>
+    <label class="theme-option"><input type="radio" name="theme" value="paper-memory"><span><b>Paper Memory</b><small>faded field notes</small></span></label>
+    <label class="motion-row"><span>Reduced motion</span><input id="motionToggle" type="checkbox"></label>
+  </aside>
+
+  <aside class="panel log-panel" id="logPanel" aria-hidden="true">
+    <div class="panel-head"><div><small>RECEIVER MEMORY</small><h2>Transmission log</h2></div><button type="button" data-close="logPanel" aria-label="Close log">×</button></div>
+    <div id="logEntries" class="log-entries"></div>
+  </aside>
+
+  <aside class="panel rewind-panel" id="rewindPanel" aria-hidden="true">
+    <div class="panel-head"><div><small>KNOWN ANCHORS</small><h2>Choose where to return</h2></div><button type="button" data-close="rewindPanel" aria-label="Close rewind panel">×</button></div>
+    <p class="panel-copy">Facts survive a rewind. Trust is harder to preserve. Every jump adds temporal drift.</p>
+    <div id="anchorList" class="anchor-list"></div>
+  </aside>
+
+  <section class="boss-overlay" id="bossOverlay" aria-hidden="true">
+    <div class="boss-card">
+      <p class="kicker">SKILL CHECK · PHASE LOCK</p>
+      <h2 id="bossTitle">Hold the impossible frequency</h2>
+      <p id="bossCopy">Stop the needle inside the live band. Lock four phases before the signal rejects you.</p>
+      <div class="boss-score"><span>LOCKS <b id="bossHits">0 / 4</b></span><span>FAULTS <b id="bossMisses">0 / 3</b></span></div>
+      <div class="phase-track" id="phaseTrack"><div class="phase-target" id="phaseTarget"></div><div class="phase-needle" id="phaseNeedle"></div></div>
+      <button class="primary lock-button" type="button" id="lockButton">LOCK PHASE <small>SPACE</small></button>
+      <p class="boss-status" id="bossStatus">The carrier is moving. Watch the band.</p>
+    </div>
+  </section>
+
+  <section class="ending-overlay" id="endingOverlay" aria-hidden="true">
+    <div class="ending-card">
+      <p class="kicker" id="endingKicker">ENDING RECORDED</p>
+      <h2 id="endingTitle"></h2>
+      <p id="endingText"></p>
+      <div class="ending-actions"><button class="primary" type="button" id="loopAgainButton">RETURN WITH WHAT YOU KNOW</button><button type="button" id="freshStartButton">ERASE ALL PROGRESS</button></div>
+      <small id="endingCount"></small>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="game.js"></script>
+</body>
+</html>
