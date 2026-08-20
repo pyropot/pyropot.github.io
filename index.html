@@ -3,59 +3,367 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Pyropot Lab — a living arcade and project playground.">
-  <title>Pyropot Lab</title>
-  <style>
-    :root { --bg:#07101d; --surface:rgba(14,25,42,.72); --text:#edf5ff; --muted:#9fb3c9; --line:rgba(177,210,255,.17); --accent:#7ee7c6; --accent2:#8da1ff; --shadow:0 24px 70px rgba(0,0,0,.34); }
-    [data-mode="light"] { --bg:#eff5fb; --surface:rgba(255,255,255,.76); --text:#142033; --muted:#52667d; --line:rgba(26,61,93,.14); --accent:#087f66; --accent2:#4058d8; --shadow:0 20px 60px rgba(39,72,105,.15); }
-    * { box-sizing:border-box; } html { scroll-behavior:smooth; } body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--text); background:var(--bg); overflow-x:hidden; }
-    body::before, body::after { content:""; position:fixed; inset:-20vmax; pointer-events:none; z-index:-2; transition:opacity .5s; }
-    body::before { background:radial-gradient(circle at 18% 22%,#266887aa 0 5%,transparent 24%),radial-gradient(circle at 79% 28%,#4936a899 0 4%,transparent 25%),radial-gradient(circle at 52% 80%,#007c6770 0 7%,transparent 28%); filter:blur(32px); animation:drift 22s ease-in-out infinite alternate; }
-    body[data-background="grid"]::before { background:linear-gradient(90deg,transparent 49%,#72b5be20 50%,transparent 51%),linear-gradient(transparent 49%,#72b5be20 50%,transparent 51%),radial-gradient(circle at 50% 50%,#183a6e,transparent 54%); background-size:42px 42px,42px 42px,auto; animation:none; }
-    body[data-background="sunset"]::before { background:radial-gradient(circle at 25% 70%,#ff6b5a77 0 9%,transparent 31%),radial-gradient(circle at 70% 27%,#ffcf6e5c 0 6%,transparent 28%),linear-gradient(140deg,#300d49,#081426 65%); animation:drift 16s ease-in-out infinite alternate; }
-    body[data-background="calm"]::before { background:radial-gradient(circle at 18% 20%,#3aa5a966,transparent 28%),radial-gradient(circle at 80% 76%,#5e86d966,transparent 30%),linear-gradient(#071524,#0a2130); animation:drift 28s ease-in-out infinite alternate; }
-    body[data-background="cardroom"]::before { background:radial-gradient(circle at 18% 24%,#ff7b4552,transparent 25%),radial-gradient(circle at 78% 72%,#28d7ad4f,transparent 29%),conic-gradient(from 210deg at 50% 50%,#071723,#25101f,#08251f,#071723); animation:drift 19s ease-in-out infinite alternate; }
-    body[data-background="cardroom"]::after { opacity:.34; background-image:linear-gradient(30deg,#ffffff09 12%,transparent 12.5%,transparent 87%,#ffffff09 87.5%),linear-gradient(150deg,#ffffff09 12%,transparent 12.5%,transparent 87%,#ffffff09 87.5%); background-size:42px 74px; }
-    body::after { z-index:-1; opacity:.5; background-image:radial-gradient(var(--line) 1px,transparent 1px); background-size:25px 25px; }
-    body.reduce-motion::before, body.reduce-motion .orb { animation-play-state:paused !important; }
-    @keyframes drift { to { transform:translate3d(5vw,-3vh,0) rotate(8deg) scale(1.06); } }
-    a { color:inherit; text-decoration:none; } button { font:inherit; } .shell { width:min(1180px,calc(100% - 36px)); margin:auto; }
-    nav { display:flex; align-items:center; justify-content:space-between; min-height:76px; position:relative; } .brand { font-weight:850; letter-spacing:-.05em; font-size:1.25rem; display:flex; gap:9px; align-items:center; } .brand-mark { display:grid; place-items:center; width:31px; height:31px; border-radius:10px; color:#08101c; background:linear-gradient(135deg,var(--accent),#bdfadf); box-shadow:0 0 25px #7ee7c677; }
-    .nav-links { display:flex; gap:22px; color:var(--muted); font-size:.92rem; } .nav-links a:hover { color:var(--text); } .nav-actions { display:flex; gap:8px; align-items:center; } .icon { width:38px; height:38px; background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:11px; cursor:pointer; }
-    .hamburger { display:none; } .mobile-menu { display:none; position:absolute; top:68px; left:0; right:0; padding:14px; background:var(--surface); backdrop-filter:blur(20px); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); z-index:5; } .mobile-menu.open { display:grid; gap:7px; } .mobile-menu a { padding:10px; color:var(--muted); }
-    .hero { min-height:610px; display:grid; align-content:center; grid-template-columns:1.2fr .8fr; gap:50px; padding:75px 0 55px; } .eyebrow { color:var(--accent); font-size:.78rem; letter-spacing:.15em; font-weight:800; text-transform:uppercase; } h1 { font-size:clamp(3.1rem,7.4vw,6.5rem); letter-spacing:-.075em; line-height:.93; margin:15px 0 22px; max-width:760px; } .gradient { background:linear-gradient(110deg,var(--accent),#b4d2ff 48%,var(--accent2)); -webkit-background-clip:text; color:transparent; } .hero p { color:var(--muted); max-width:570px; font-size:1.1rem; line-height:1.65; }
-    .cta-row { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; } .button { display:inline-flex; justify-content:center; align-items:center; min-height:46px; padding:0 18px; border:1px solid var(--line); border-radius:12px; font-weight:750; cursor:pointer; } .button.primary { background:var(--accent); color:#05201b; border-color:transparent; box-shadow:0 12px 35px #4bddbb35; } .button.ghost { background:var(--surface); color:var(--text); }
-    .hero-orbit { display:grid; place-items:center; min-height:330px; } .orb { width:min(330px,82vw); aspect-ratio:1; border:1px solid var(--line); border-radius:50%; position:relative; background:radial-gradient(circle at 38% 34%,#a5ffe399,transparent 12%),radial-gradient(circle at 66% 64%,#8fa3ff66,transparent 15%),var(--surface); box-shadow:inset 0 0 65px #7ee7c61c,var(--shadow); animation:orbit 12s linear infinite; } @keyframes orbit { to { transform:rotate(360deg); } } .orb::after { content:"BUILD • PLAY • LEARN • "; position:absolute; inset:17px; border:1px dashed var(--line); border-radius:50%; display:grid; place-items:center; font-size:.66rem; color:var(--muted); letter-spacing:.15em; } .orbit-chip { position:absolute; padding:8px 11px; border-radius:9px; background:var(--bg); border:1px solid var(--line); font-size:.72rem; color:var(--accent); animation:unspin 12s linear infinite; } @keyframes unspin { to { transform:rotate(-360deg); } } .orbit-chip.one{top:4%;left:20%}.orbit-chip.two{right:-4%;top:46%}.orbit-chip.three{bottom:7%;left:6%}
-    section { padding:78px 0; } .section-head { display:flex; justify-content:space-between; gap:22px; align-items:end; margin-bottom:28px; } h2 { font-size:clamp(2rem,4vw,3.25rem); letter-spacing:-.055em; margin:8px 0 0; } .section-head p { color:var(--muted); max-width:440px; line-height:1.55; }
-    .game-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; } .game-card { min-height:250px; padding:23px; border-radius:20px; border:1px solid var(--line); background:linear-gradient(145deg,var(--surface),rgba(9,17,30,.36)); box-shadow:var(--shadow); display:flex; flex-direction:column; overflow:hidden; position:relative; transition:transform .24s,border-color .24s; } .game-card:hover { transform:translateY(-6px); border-color:var(--accent); } .game-card::before { content:""; position:absolute; width:180px; height:180px; border-radius:50%; right:-55px; top:-65px; opacity:.55; background:var(--card-glow,#5f8fff); filter:blur(6px); } .game-card > * { position:relative; } .tag { font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--accent); font-weight:800; } .game-card h3 { font-size:1.45rem; letter-spacing:-.04em; margin:13px 0 8px; } .game-card p { color:var(--muted); line-height:1.48; margin:0; } .game-card .launch { margin-top:auto; padding-top:20px; font-weight:750; color:var(--text); }
-    .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; } .feature { padding:18px; border:1px solid var(--line); border-radius:15px; background:var(--surface); } .feature span { color:var(--accent); font-weight:800; } .feature p { margin:8px 0 0; color:var(--muted); font-size:.9rem; line-height:1.45; }
-    .contact { border:1px solid var(--line); background:var(--surface); border-radius:24px; padding:clamp(22px,5vw,56px); box-shadow:var(--shadow); } .contact p { color:var(--muted); line-height:1.55; } form { display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-top:25px; } .wide { grid-column:1/-1; } label { display:grid; gap:7px; color:var(--muted); font-size:.84rem; font-weight:700; } input,textarea { width:100%; background:rgba(3,10,20,.28); border:1px solid var(--line); border-radius:10px; padding:13px; color:var(--text); font:inherit; } textarea { min-height:130px; resize:vertical; } .form-note { font-size:.8rem; color:var(--muted); margin:14px 0 0; } .form-status { min-height:20px; color:var(--accent); font-size:.9rem; }
-    .honeypot { position:absolute!important; left:-10000px!important; width:1px!important; height:1px!important; opacity:0!important; pointer-events:none!important; }
-    footer { border-top:1px solid var(--line); padding:27px 0 38px; color:var(--muted); font-size:.86rem; display:flex; justify-content:space-between; gap:15px; } .settings { position:fixed; z-index:10; right:16px; bottom:16px; width:min(300px,calc(100% - 32px)); padding:18px; border:1px solid var(--line); border-radius:17px; background:var(--surface); backdrop-filter:blur(22px); box-shadow:var(--shadow); transform:translateY(125%); transition:transform .3s; } .settings.open { transform:translateY(0); } .settings h3 { margin:0 0 13px; } .setting-row { display:flex; justify-content:space-between; align-items:center; gap:15px; margin:12px 0; color:var(--muted); font-size:.9rem; } select { background:var(--bg); color:var(--text); border:1px solid var(--line); padding:7px; border-radius:8px; }
-    @media (max-width:850px) { .hero{grid-template-columns:1fr;padding-top:50px;min-height:auto}.hero-orbit{display:none}.game-grid{grid-template-columns:repeat(2,1fr)}.feature-grid{grid-template-columns:repeat(2,1fr)} }
-    @media (max-width:620px) { .shell{width:min(100% - 24px,1180px)}nav{min-height:66px}.nav-links,.nav-actions .button{display:none}.hamburger{display:block}.hero{padding:55px 0 35px}.hero p{font-size:1rem}.game-grid,.feature-grid{grid-template-columns:1fr}.game-card{min-height:210px}.section-head{display:block}.section-head p{margin-top:13px}section{padding:52px 0}form{grid-template-columns:1fr}footer{display:block;line-height:1.7}footer a{display:block;margin-top:5px}.contact{border-radius:18px} }
-  </style>
+  <meta name="description" content="The engineering portfolio of Lucas Maverick Trevillian — mechanical engineering student, CAD designer, prototype builder, and web experimenter.">
+  <meta name="theme-color" content="#101d25">
+  <title>Lucas Trevillian — Engineering Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Newsreader:opsz,wght@6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portfolio.css">
+  <script src="portfolio.js" defer></script>
 </head>
-<body data-background="cardroom">
-  <header class="shell"><nav><a class="brand" href="./"><span class="brand-mark">P</span>pyropot lab</a><div class="nav-links"><a href="#games">Games</a><a href="#ideas">Projects</a><a href="https://github.com/pyropot" target="_blank" rel="noreferrer">GitHub ↗</a><a href="#contact">Contact</a></div><div class="nav-actions"><a class="button ghost" href="/poker/">Play poker</a><button class="icon" aria-label="Open display settings" onclick="toggleSettings()">⚙</button><button class="icon hamburger" aria-label="Open navigation" onclick="toggleMenu()">☰</button></div><div class="mobile-menu" id="mobileMenu"><a href="#games" onclick="toggleMenu()">Games</a><a href="#ideas" onclick="toggleMenu()">Projects</a><a href="https://github.com/pyropot" target="_blank" rel="noreferrer">GitHub ↗</a><a href="#contact" onclick="toggleMenu()">Contact</a><a href="/poker/">Play poker</a></div></nav></header>
-  <main>
-    <section class="shell hero"><div><div class="eyebrow">A personal build playground</div><h1>Small experiments.<br><span class="gradient">Big worlds.</span></h1><p>Pyropot Lab is a growing home for card games, creative tools, and the projects I’m learning by building—one playable idea at a time.</p><div class="cta-row"><a class="button primary" href="#games">Explore the arcade ↓</a><a class="button ghost" href="https://github.com/pyropot" target="_blank" rel="noreferrer">View GitHub ↗</a></div></div><div class="hero-orbit"><div class="orb"><span class="orbit-chip one">Card games</span><span class="orbit-chip two">Web lab</span><span class="orbit-chip three">Open source</span></div></div></section>
-    <section class="shell" id="games"><div class="section-head"><div><div class="eyebrow">Playable now</div><h2>The arcade</h2></div><p>Every project starts small, gets real feedback, and grows in public.</p></div><div class="game-grid"><a class="game-card" style="--card-glow:#ff58ad" href="/heartbound/"><span class="tag">New · Dating-sim RPG</span><h3>Heartbound // Re:Rise</h3><p>Choose one of five reincarnated heroines, date the other four, grind a sky dungeon, and defeat the Demon Queen together.</p><span class="launch">Choose your heroine →</span></a><a class="game-card" style="--card-glow:#ff3f94" href="/parallax-echo/"><span class="tag">Original visual novel</span><h3>Parallax // Echo</h3><p>Break a thirteen-minute time loop, carry forbidden knowledge backward, and survive a phase-lock duel.</p><span class="launch">Answer the signal →</span></a><a class="game-card" style="--card-glow:#25a87c" href="/poker/"><span class="tag">Live multiplayer · 18 games</span><h3>Pyropot Poker Room</h3><p>One account and bankroll across Hold'em, Omaha, Draw, Stud, No Peek, and wild-card tables.</p><span class="launch">Choose a table →</span></a><a class="game-card" style="--card-glow:#d59cff" href="/lorcana/"><span class="tag">Deck duel prototype</span><h3>Lorelight Duel</h3><p>A simple lore-race card game prototype built for testing turn structure and decisions.</p><span class="launch">Enter the realm →</span></a><a class="game-card" style="--card-glow:#ffb85c" href="/yugioh/"><span class="tag">Duel utility</span><h3>Duel Lab</h3><p>A fast life-point tracker and turn helper for casual trading-card-game play.</p><span class="launch">Start a duel →</span></a><div class="game-card" style="--card-glow:#609cff"><span class="tag">Coming next</span><h3>Deck Builder</h3><p>Deck notes, collections, matchup notes, and a lightweight playtest space.</p><span class="launch">On the workbench</span></div><div class="game-card" style="--card-glow:#82e9ff"><span class="tag">Coming next</span><h3>Tabletop Toolkit</h3><p>Dice, timers, scoreboards, and small utilities for any game night.</p><span class="launch">On the workbench</span></div></div></section>
-    <section class="shell" id="ideas"><div class="section-head"><div><div class="eyebrow">What this place is for</div><h2>Build, learn, iterate.</h2></div></div><div class="feature-grid"><div class="feature"><span>01 / Games</span><p>Playable experiments with the rough edges visible and the fun kept central.</p></div><div class="feature"><span>02 / Tools</span><p>Useful little browser utilities for cards, tabletop sessions, and creative work.</p></div><div class="feature"><span>03 / Notes</span><p>A future home for build logs, lessons learned, and the decisions behind each project.</p></div><div class="feature"><span>04 / Community</span><p>Feedback-driven upgrades: try a project, tell me what feels wrong, and help shape it.</p></div></div></section>
-    <section class="shell" id="contact"><div class="contact"><div class="eyebrow">Direct inbox</div><h2>Have an idea worth testing?</h2><p>Questions, collaborations, unfiltered feedback, bug reports, or just a hello—all welcome.</p><form id="contactForm" action="https://formsubmit.co/589fe15855933954224a77b91e8bfdd3" method="POST"><input type="hidden" name="_subject" value="New message from Pyropot Lab"><input type="hidden" name="_template" value="table"><input type="hidden" name="_captcha" value="false"><input type="hidden" name="_next" value="https://pyropot.github.io/?message=sent#contact"><input class="honeypot" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Name<input required name="name" autocomplete="name" placeholder="Your name"></label><label>Email<input required type="email" name="email" autocomplete="email" placeholder="you@example.com"></label><label class="wide">Message<textarea required name="message" minlength="3" maxlength="5000" placeholder="What’s on your mind?"></textarea></label><div class="wide"><button class="button primary" id="contactSubmit" type="submit">Send to my inbox →</button><span class="form-status" id="formStatus" role="status" aria-live="polite"></span><p class="form-note">No account, sign-in, or CAPTCHA. Your message is delivered straight to my inbox, and replies go to the address you enter.</p></div></form></div></section>
+<body data-theme="drafting">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <nav class="shell nav" aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="Lucas Trevillian, home">
+        <span class="brand-mark" aria-hidden="true">LT</span>
+        <span>Lucas Trevillian</span>
+      </a>
+      <div class="nav-links" id="desktopNav">
+        <a href="#work">Work</a>
+        <a href="#beam-lab">Beam Lab</a>
+        <a href="#experience">Experience</a>
+        <a href="#builds">Digital builds</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a class="button button-small button-quiet resume-nav" href="assets/Lucas-Maverick-Trevillian-Resume.pdf" download>Résumé <span aria-hidden="true">↓</span></a>
+        <button class="icon-button" id="settingsButton" type="button" aria-expanded="false" aria-controls="settingsPanel" aria-label="Open display settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.2 3.8-.1-1.3 1.8-1.4-2-3.4-2.2.9a8.4 8.4 0 0 0-2.2-1.3L15.2 3h-4.1l-.3 2.5a8.4 8.4 0 0 0-2.2 1.3l-2.3-.9-2 3.4 1.9 1.4a8.2 8.2 0 0 0 0 2.6l-1.9 1.4 2 3.4 2.3-.9c.6.5 1.4.9 2.2 1.3l.3 2.5h4.1l.3-2.5a8.4 8.4 0 0 0 2.2-1.3l2.2.9 2-3.4-1.8-1.4.1-1.3Z"/></svg>
+        </button>
+        <button class="icon-button menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileNav" aria-label="Open navigation menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobileNav" hidden>
+        <a href="#work">Work</a>
+        <a href="#beam-lab">Beam Lab</a>
+        <a href="#experience">Experience</a>
+        <a href="#builds">Digital builds</a>
+        <a href="#contact">Contact</a>
+        <a href="assets/Lucas-Maverick-Trevillian-Resume.pdf" download>Download résumé</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero shell" id="top">
+      <div class="hero-copy reveal">
+        <div class="status-line"><span class="status-dot" aria-hidden="true"></span> Open to mechanical engineering co-op opportunities</div>
+        <p class="kicker">Mechanical engineering · CAD · Prototyping</p>
+        <h1>I turn practical problems into <em>things you can test.</em></h1>
+        <p class="hero-lede">I’m Lucas Maverick Trevillian, a mechanical engineering student at York College of Pennsylvania. I design in CAD, manufacture working prototypes, and use every build to make the next idea more precise.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#work">Explore my work <span aria-hidden="true">↘</span></a>
+          <a class="button button-secondary" href="assets/Lucas-Maverick-Trevillian-Resume.pdf" download>Download résumé <span aria-hidden="true">↓</span></a>
+        </div>
+        <dl class="hero-facts" aria-label="Portfolio highlights">
+          <div><dt>2028</dt><dd>Expected B.S.</dd></div>
+          <div><dt>4+ years</dt><dd>Team projects</dd></div>
+          <div><dt>CAD → build</dt><dd>Hands-on process</dd></div>
+        </dl>
+      </div>
+
+      <div class="hero-visual reveal" aria-label="Technical illustration of a dimensioned mechanical assembly">
+        <div class="drawing-meta top"><span>ASSEMBLY 01</span><span>REV. A</span></div>
+        <svg class="assembly" viewBox="0 0 620 560" role="img" aria-labelledby="assemblyTitle assemblyDesc">
+          <title id="assemblyTitle">Exploded mechanical assembly drawing</title>
+          <desc id="assemblyDesc">An abstract dimensioned CAD-style drawing representing Lucas's design and prototyping process.</desc>
+          <defs>
+            <linearGradient id="partFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".19"/><stop offset="1" stop-color="currentColor" stop-opacity=".03"/></linearGradient>
+          </defs>
+          <g class="draft-lines">
+            <path d="M48 78h524M48 481h524M105 35v490M510 35v490"/>
+            <path d="M81 115h48M81 115l11-7m-11 7 11 7M534 115h-48m48 0-11-7m11 7-11 7"/>
+            <path d="M69 403v-46m0 46-7-11m7 11 7-11M69 158v46m0-46-7 11m7-11 7 11"/>
+            <circle cx="307" cy="280" r="181"/><circle cx="307" cy="280" r="113"/>
+          </g>
+          <g class="parts">
+            <path d="M185 215 307 145l122 70v140l-122 70-122-70Z" fill="url(#partFill)"/>
+            <path d="m185 215 122 70 122-70M307 285v140M307 145v140"/>
+            <path d="M221 237v76l86 50 86-50v-76l-86-49Z" fill="url(#partFill)"/>
+            <ellipse cx="307" cy="248" rx="47" ry="27"/>
+            <path d="M260 248v73c0 15 21 27 47 27s47-12 47-27v-73"/>
+            <ellipse cx="307" cy="321" rx="47" ry="27"/>
+            <circle cx="307" cy="248" r="16"/>
+            <path d="M291 248v-64m32 64v-64M280 184h54"/>
+            <path d="m181 211-34-20m286 20 34-20M179 359l-35 22m291-22 35 22"/>
+            <circle cx="147" cy="191" r="8"/><circle cx="467" cy="191" r="8"/><circle cx="144" cy="381" r="8"/><circle cx="470" cy="381" r="8"/>
+          </g>
+          <g class="drawing-labels">
+            <text x="270" y="65">405.0 mm</text>
+            <text x="24" y="288" transform="rotate(-90 24 288)">245.0 mm</text>
+            <text x="393" y="144">M8 × 1.25</text>
+            <path d="m391 149-58 33"/>
+            <text x="98" y="439">6061 AL / CONCEPT</text>
+            <text x="441" y="461">NTS</text>
+          </g>
+        </svg>
+        <div class="process-track" aria-hidden="true"><span class="active">Problem</span><i></i><span>Model</span><i></i><span>Prototype</span><i></i><span>Test</span></div>
+        <div class="drawing-meta bottom"><span>LMT / PORTFOLIO</span><span>NOT TO SCALE</span></div>
+      </div>
+    </section>
+
+    <div class="proof-band">
+      <div class="shell proof-list" aria-label="Technical tools">
+        <span>SolidWorks</span><i></i><span>Autodesk</span><i></i><span>AutoCAD</span><i></i><span>MATLAB</span><i></i><span>Prototype fabrication</span>
+      </div>
+    </div>
+
+    <section class="section shell" id="work">
+      <div class="section-heading reveal">
+        <div><p class="kicker">Selected engineering work</p><h2>Designed with intent.<br><em>Built to learn.</em></h2></div>
+        <p>My projects move from an observable problem to a modeled solution, then into a physical or testable result. These examples come directly from my résumé.</p>
+      </div>
+
+      <div class="project-grid">
+        <article class="project-card project-feature reveal">
+          <div class="project-visual handle-visual" aria-hidden="true">
+            <div class="handle-shape"><span></span><span></span><span></span><span></span></div>
+            <div class="dimension horizontal">96 mm</div>
+            <div class="dimension vertical">Ø 34</div>
+            <span class="visual-label">ERGONOMIC GRIP / PROTOTYPE</span>
+          </div>
+          <div class="project-copy">
+            <div class="project-number">01</div>
+            <p class="project-type">Human factors · SolidWorks · Fabrication</p>
+            <h3>Ergonomic crochet-hook handle</h3>
+            <p>Investigated how handle geometry affects comfort during extended use, designed an attachable grip in SolidWorks, and manufactured a working prototype.</p>
+            <ul class="project-tags"><li>Problem definition</li><li>CAD modeling</li><li>Physical prototype</li></ul>
+          </div>
+        </article>
+
+        <article class="project-card reveal">
+          <div class="project-visual hammer-visual" aria-hidden="true">
+            <svg viewBox="0 0 420 250"><g><path d="m105 73 155-36 49 21-9 48-160 31-49-20Z"/><path d="m172 129-35 18 98 78 31-22Z"/><path d="m137 147 35-18m63 96 31-22M105 73l35 64m120-100 40 69"/><path d="M62 199h299M86 190v18m254-18v18"/></g><text x="179" y="243">FULL ASSEMBLY</text></svg>
+            <span class="visual-label">SOLIDWORKS / SPRING 2024</span>
+          </div>
+          <div class="project-copy">
+            <div class="project-number">02</div>
+            <p class="project-type">Mechanical design · SolidWorks</p>
+            <h3>Hammer assembly</h3>
+            <p>Modeled a complete hammer from scratch, translating familiar geometry into a controlled multi-part CAD assembly.</p>
+            <ul class="project-tags"><li>Part modeling</li><li>Assembly design</li></ul>
+          </div>
+        </article>
+
+        <article class="project-card reveal">
+          <div class="project-visual robot-visual" aria-hidden="true">
+            <svg viewBox="0 0 420 250"><g><circle cx="128" cy="191" r="34"/><circle cx="294" cy="191" r="34"/><path d="M100 176h224l-25-95H139Z"/><path d="m167 82 28-41h88l17 40M195 41l16 40M107 152h206M147 102h63v42h-73m151-56-61 57"/><circle cx="283" cy="41" r="8"/></g><text x="164" y="240">COMPETITION BUILD</text></svg>
+            <span class="visual-label">AUTODESK / VEX ROBOTICS</span>
+          </div>
+          <div class="project-copy">
+            <div class="project-number">03</div>
+            <p class="project-type">Robotics · Autodesk · Team build</p>
+            <h3>VEX disc-shooting robot</h3>
+            <p>Created a 3D robot model in Autodesk and helped build the competitive machine as a CADer and builder.</p>
+            <ul class="project-tags"><li>3D modeling</li><li>Team fabrication</li></ul>
+          </div>
+        </article>
+
+        <article class="project-card project-note reveal">
+          <div class="note-grid" aria-hidden="true"></div>
+          <div class="project-copy">
+            <div class="project-number">04</div>
+            <p class="project-type">Architecture · Systems thinking</p>
+            <h3>SkillsUSA room plan</h3>
+            <p>Developed a floor plan and evaluated heater selection for a SkillsUSA competition room, balancing spatial and environmental requirements.</p>
+            <ul class="project-tags"><li>Floor planning</li><li>Equipment selection</li></ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section capabilities-section">
+      <div class="shell">
+        <div class="section-heading compact reveal">
+          <div><p class="kicker">Capabilities</p><h2>A practical design toolkit.</h2></div>
+          <p>I’m developing the full loop: understand the constraint, communicate the design, build the result, and learn from what happens.</p>
+        </div>
+        <div class="capability-grid">
+          <article class="capability reveal"><span class="capability-icon">01</span><h3>CAD &amp; drafting</h3><p>SolidWorks, Autodesk, and AutoCAD for part geometry, assemblies, and technical plans.</p></article>
+          <article class="capability reveal"><span class="capability-icon">02</span><h3>Analysis</h3><p>MATLAB and structured calculations for exploring engineering behavior and design choices.</p></article>
+          <article class="capability reveal"><span class="capability-icon">03</span><h3>Prototyping</h3><p>Hands-on fabrication experience that turns screen-based decisions into testable objects.</p></article>
+          <article class="capability reveal"><span class="capability-icon">04</span><h3>Team execution</h3><p>Competition, classroom, and workplace experience documenting details and building with others.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="beam-lab">
+      <div class="section-heading reveal">
+        <div><p class="kicker">Interactive engineering notebook</p><h2>Beam Lab</h2></div>
+        <p>Change the material, load, and geometry to see how a simple cantilever responds. The model updates instantly.</p>
+      </div>
+
+      <div class="lab reveal">
+        <div class="lab-controls">
+          <div class="lab-title"><span>LIVE MODEL / 01</span><strong>Cantilever response</strong></div>
+          <label class="control-field">Material
+            <select id="material">
+              <option value="aluminum">6061-T6 Aluminum</option>
+              <option value="steel">Structural Steel</option>
+              <option value="abs">ABS Plastic</option>
+              <option value="oak">White Oak</option>
+            </select>
+          </label>
+          <label class="range-field" for="load"><span>End load <output id="loadValue" for="load">250 N</output></span><input id="load" type="range" min="25" max="1000" step="25" value="250"></label>
+          <label class="range-field" for="length"><span>Beam length <output id="lengthValue" for="length">800 mm</output></span><input id="length" type="range" min="250" max="1800" step="50" value="800"></label>
+          <label class="range-field" for="width"><span>Section width <output id="widthValue" for="width">40 mm</output></span><input id="width" type="range" min="10" max="100" step="5" value="40"></label>
+          <label class="range-field" for="height"><span>Section height <output id="heightValue" for="height">60 mm</output></span><input id="height" type="range" min="10" max="150" step="5" value="60"></label>
+          <button class="text-button" id="resetLab" type="button">Reset model ↺</button>
+        </div>
+
+        <div class="lab-stage">
+          <div class="beam-diagram" aria-label="Animated cantilever beam diagram">
+            <svg viewBox="0 0 760 350" role="img" aria-labelledby="beamTitle beamDesc">
+              <title id="beamTitle">Cantilever beam deflection model</title>
+              <desc id="beamDesc">A fixed beam bends under a downward force at its free end.</desc>
+              <g class="wall"><path d="M80 52v248M38 66l42-24m-42 62 42-24m-42 62 42-24m-42 62 42-24m-42 62 42-24m-42 62 42-24m-42 62 42-24"/></g>
+              <path class="beam-shadow" id="beamShadow" d="M80 170 Q400 170 680 170"/>
+              <path class="beam-path" id="beamPath" d="M80 170 Q400 170 680 170"/>
+              <path class="force-arrow" id="forceArrow" d="M680 70v72m0 0-13-19m13 19 13-19"/>
+              <text class="force-text" id="forceText" x="700" y="102">250 N</text>
+              <path class="dimension-line" d="M80 315h600m-600-9v18m600-18v18"/>
+              <text class="diagram-text" id="lengthText" x="335" y="340">800 mm</text>
+              <text class="diagram-text" x="92" y="40">FIXED</text>
+            </svg>
+            <span class="deflection-badge" id="deflectionBadge">δ = 0.86 mm</span>
+          </div>
+
+          <div class="results-grid" aria-live="polite">
+            <div><span>Tip deflection</span><strong id="deflectionResult">0.86 mm</strong></div>
+            <div><span>Max bending stress</span><strong id="stressResult">8.33 MPa</strong></div>
+            <div><span>Nominal safety factor</span><strong id="safetyResult">33.1</strong></div>
+          </div>
+          <div class="utilization">
+            <div><span>Yield utilization</span><span id="utilizationValue">3%</span></div>
+            <div class="utilization-track"><span id="utilizationBar"></span></div>
+          </div>
+          <details class="lab-details">
+            <summary>How the model works</summary>
+            <p>For a rectangular section, Beam Lab uses I = bh³/12, tip deflection δ = FL³/3EI, and maximum bending stress σ = 6FL/bh². Values are idealized, educational estimates—not a substitute for validated engineering design.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section experience-section" id="experience">
+      <div class="shell experience-layout">
+        <div class="experience-intro reveal">
+          <p class="kicker">Education &amp; experience</p>
+          <h2>Building the foundation.</h2>
+          <p>My engineering work is supported by practical manufacturing experience, team leadership, and a habit of learning by making.</p>
+          <a class="arrow-link" href="assets/Lucas-Maverick-Trevillian-Resume.pdf" target="_blank" rel="noreferrer">Read the complete résumé <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="timeline">
+          <article class="timeline-item reveal">
+            <span class="timeline-date">Expected May 2028</span>
+            <h3>B.S. Mechanical Engineering</h3>
+            <p class="timeline-place">York College of Pennsylvania · York, PA</p>
+            <p>Coursework and projects centered on mechanical design, CAD, analysis, and fabrication.</p>
+          </article>
+          <article class="timeline-item reveal">
+            <span class="timeline-date">2023</span>
+            <h3>VEX Robotics · Builder / CADer</h3>
+            <p class="timeline-place">Dulaney High School · Phoenix, MD</p>
+            <p>Modeled a competition robot in Autodesk and helped build a working disc-shooting machine with the team.</p>
+          </article>
+          <article class="timeline-item reveal">
+            <span class="timeline-date">2023</span>
+            <h3>SkillsUSA · Member</h3>
+            <p class="timeline-place">Dulaney High School · Phoenix, MD</p>
+            <p>Contributed to technical competition preparation and applied classroom skills in a team setting.</p>
+          </article>
+          <article class="timeline-item reveal">
+            <span class="timeline-date">2019–2022</span>
+            <h3>Snowball Maker</h3>
+            <p class="timeline-place">Shorty’s Ice Shack · Severna Park, MD</p>
+            <p>Manufactured and distributed products in a fast-paced environment and trained new employees.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="builds">
+      <div class="section-heading reveal">
+        <div><p class="kicker">Digital builds</p><h2>Curiosity, shipped.</h2></div>
+        <p>I also build browser experiments. They are a different medium for the same habits: define rules, test systems, and iterate from real behavior.</p>
+      </div>
+      <div class="build-grid">
+        <a class="build-card build-primary reveal" href="poker/">
+          <div class="build-art poker-art" aria-hidden="true"><span>A♠</span><span>K♥</span><i></i></div>
+          <div><p class="project-type">Shared-account multiplayer · 18 variants</p><h3>Pyropot Poker Room</h3><p>Hold’em, Omaha, Draw, Stud, No Peek, and wild-card tables under one account and bankroll.</p><span class="arrow-link">Choose a table →</span></div>
+        </a>
+        <a class="build-card reveal" href="parallax-echo/"><div class="build-index">VN.01</div><div><p class="project-type">Branching visual novel</p><h3>Parallax // Echo</h3><p>A thirteen-minute time loop with persistent knowledge and skill-based encounters.</p><span class="arrow-link">Answer the signal →</span></div></a>
+        <a class="build-card reveal" href="heartbound/"><div class="build-index">VN.02</div><div><p class="project-type">Dating-sim RPG</p><h3>Heartbound // Re:Rise</h3><p>Character routes, progression systems, dungeon challenges, and multiple endings.</p><span class="arrow-link">Begin a route →</span></div></a>
+        <a class="build-card reveal" href="lorcana/"><div class="build-index">TCG.01</div><div><p class="project-type">Card-game prototype</p><h3>Lorelight Duel</h3><p>A compact turn-structure experiment built around decisions and a lore race.</p><span class="arrow-link">Enter the realm →</span></div></a>
+      </div>
+    </section>
+
+    <section class="section shell" id="contact">
+      <div class="contact-card reveal">
+        <div class="contact-intro">
+          <p class="kicker">Let’s build something useful</p>
+          <h2>Looking for a thoughtful, hands-on engineering co-op?</h2>
+          <p>I’m interested in opportunities where I can contribute to design, CAD, prototyping, testing, and the practical work between them.</p>
+          <div class="contact-details">
+            <a href="mailto:ltrevillian@ycp.edu">ltrevillian@ycp.edu <span aria-hidden="true">↗</span></a>
+            <span>Phoenix, Maryland</span>
+          </div>
+        </div>
+        <form id="contactForm" action="https://formsubmit.co/589fe15855933954224a77b91e8bfdd3" method="POST">
+          <input type="hidden" name="_subject" value="Portfolio inquiry for Lucas Trevillian">
+          <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://pyropot.github.io/?message=sent#contact">
+          <input class="honeypot" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <div class="form-pair">
+            <label>Name<input required name="name" autocomplete="name" placeholder="Your name"></label>
+            <label>Email<input required type="email" name="email" autocomplete="email" placeholder="you@company.com"></label>
+          </div>
+          <label>Message<textarea required name="message" minlength="3" maxlength="5000" placeholder="Tell me about the opportunity or project..."></textarea></label>
+          <div class="form-footer">
+            <button class="button button-primary" id="contactSubmit" type="submit">Send message <span aria-hidden="true">→</span></button>
+            <p class="form-note">Delivered directly to my inbox. I’ll reply to the email you provide.</p>
+          </div>
+          <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
   </main>
-  <footer class="shell"><span>© <span id="year"></span> Pyropot Lab. Built in public.</span><a href="https://github.com/pyropot" target="_blank" rel="noreferrer">github.com/pyropot ↗</a></footer>
-  <aside class="settings" id="settings"><h3>Display settings</h3><div class="setting-row"><span>Appearance</span><select id="modeSelect" onchange="setMode(this.value)"><option value="dark">Dark</option><option value="light">Light</option></select></div><div class="setting-row"><span>Animated background</span><select id="backgroundSelect" onchange="setBackground(this.value)"><option value="cardroom">Cardroom glow — New</option><option value="aurora">Aurora</option><option value="grid">Blueprint grid</option><option value="sunset">Sunset haze</option><option value="calm">Calm current</option></select></div><div class="setting-row"><span>Motion</span><button class="icon" id="motionButton" onclick="toggleMotion()">On</button></div></aside>
-  <script>
-    const root=document.documentElement, body=document.body;
-    const savedMode=localStorage.getItem('pyropot-mode')||'dark', savedBackground=localStorage.getItem('pyropot-background')||'cardroom', motion=localStorage.getItem('pyropot-motion')!=='off';
-    function setMode(value){root.dataset.mode=value;localStorage.setItem('pyropot-mode',value);document.getElementById('modeSelect').value=value}
-    function setBackground(value){body.dataset.background=value;localStorage.setItem('pyropot-background',value);document.getElementById('backgroundSelect').value=value}
-    function toggleMotion(){const off=body.classList.toggle('reduce-motion');localStorage.setItem('pyropot-motion',off?'off':'on');document.getElementById('motionButton').textContent=off?'Off':'On'}
-    function toggleSettings(){document.getElementById('settings').classList.toggle('open')} function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open')}
-    setMode(savedMode);setBackground(savedBackground);if(!motion)toggleMotion();document.getElementById('year').textContent=new Date().getFullYear();
-    const formStatus=document.getElementById('formStatus');
-    if(new URLSearchParams(location.search).get('message')==='sent'){formStatus.textContent='Message sent — thank you. I’ll reply by email.'}
-    document.getElementById('contactForm').addEventListener('submit',()=>{document.getElementById('contactSubmit').textContent='Sending…';formStatus.textContent='Delivering securely to my inbox…'});
-  </script>
-</body></html>
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <div><a class="brand footer-brand" href="#top"><span class="brand-mark">LT</span><span>Lucas Trevillian</span></a><p>Mechanical engineering student · Designer · Builder</p></div>
+      <div class="footer-links"><a href="https://github.com/pyropot" target="_blank" rel="noreferrer">GitHub ↗</a><a href="assets/Lucas-Maverick-Trevillian-Resume.pdf" target="_blank" rel="noreferrer">Résumé ↗</a><a href="#contact">Contact</a></div>
+      <div class="footer-meta"><span>© <span id="year"></span> Lucas Trevillian</span><span>Typeset in <a href="https://fonts.google.com/specimen/Manrope" target="_blank" rel="noreferrer">Manrope</a> &amp; <a href="https://fonts.google.com/specimen/Newsreader" target="_blank" rel="noreferrer">Newsreader</a> via Google Fonts.</span></div>
+    </div>
+  </footer>
+
+  <aside class="settings" id="settingsPanel" aria-labelledby="settingsTitle" hidden>
+    <div class="settings-head"><div><span>DISPLAY / PERSONALIZE</span><h2 id="settingsTitle">Portfolio settings</h2></div><button class="icon-button" id="closeSettings" type="button" aria-label="Close settings">×</button></div>
+    <label class="setting-row">Theme
+      <select id="themeSelect">
+        <option value="drafting">Drafting vellum — New</option>
+        <option value="cardroom">Cardroom glow</option>
+        <option value="aurora">Aurora</option>
+        <option value="grid">Blueprint grid</option>
+        <option value="sunset">Sunset haze</option>
+        <option value="calm">Calm current</option>
+      </select>
+    </label>
+    <label class="setting-row">Appearance
+      <select id="modeSelect"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
+    </label>
+    <label class="setting-row">Text size
+      <select id="textSelect"><option value="normal">Standard</option><option value="large">Large</option><option value="small">Compact</option></select>
+    </label>
+    <label class="setting-toggle"><span><strong>Reduce motion</strong><small>Pause ambient animation</small></span><input id="motionToggle" type="checkbox"><i aria-hidden="true"></i></label>
+    <label class="setting-toggle"><span><strong>High contrast</strong><small>Strengthen borders and text</small></span><input id="contrastToggle" type="checkbox"><i aria-hidden="true"></i></label>
+    <button class="text-button settings-reset" id="resetSettings" type="button">Restore defaults ↺</button>
+  </aside>
+  <div class="settings-scrim" id="settingsScrim" hidden></div>
+</body>
+</html>
