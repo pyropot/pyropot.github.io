@@ -39,6 +39,7 @@ html[data-mode="light"] {
   --shadow: 0 28px 70px rgba(54, 48, 34, .12);
 }
 
+body[data-theme="cobalt"] { --accent: #8da8ff; --accent-2: #63d9d0; }
 body[data-theme="carbon"] { --accent: #73e1bd; --accent-2: #a9bdd0; }
 body[data-theme="signal"] { --accent: #ff646d; --accent-2: #79d7c3; }
 body[data-theme="workshop"] { --accent: #e5be64; --accent-2: #9db2ad; }
@@ -47,6 +48,7 @@ body[data-theme="aurora"] { --accent: #7ce8c5; --accent-2: #8fa6ff; }
 body[data-theme="grid"] { --accent: #78d8e8; --accent-2: #9cb3ff; }
 body[data-theme="sunset"] { --accent: #ffab69; --accent-2: #f985b4; }
 body[data-theme="calm"] { --accent: #83d0ce; --accent-2: #86aeea; }
+html[data-mode="light"] body[data-theme="cobalt"] { --accent: #3b50b7; --accent-2: #08736d; }
 html[data-mode="light"] body[data-theme="carbon"] { --accent: #08745a; --accent-2: #3d6178; }
 html[data-mode="light"] body[data-theme="signal"] { --accent: #b4212c; --accent-2: #187462; }
 html[data-mode="light"] body[data-theme="workshop"] { --accent: #80601a; --accent-2: #4e6863; }
@@ -94,6 +96,7 @@ body::after {
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, black, transparent 78%);
 }
+body[data-theme="cobalt"]::before { background: radial-gradient(circle at 14% 8%, rgba(76, 102, 225, .27), transparent 31%), radial-gradient(circle at 86% 18%, rgba(45, 189, 184, .18), transparent 30%), linear-gradient(145deg, rgba(12, 19, 64, .28), transparent 64%); }
 body[data-theme="carbon"]::before { background: radial-gradient(circle at 18% 6%, rgba(51, 206, 161, .18), transparent 31%), radial-gradient(circle at 86% 22%, rgba(90, 121, 151, .18), transparent 32%), linear-gradient(145deg, rgba(4, 18, 20, .32), transparent 62%); }
 body[data-theme="signal"]::before { background: radial-gradient(circle at 13% 9%, rgba(255, 64, 82, .22), transparent 29%), radial-gradient(circle at 86% 20%, rgba(72, 204, 175, .16), transparent 31%), linear-gradient(125deg, rgba(89, 14, 29, .13), transparent 58%); }
 body[data-theme="workshop"]::before { background: linear-gradient(115deg, rgba(229, 190, 100, .08), transparent 30%), radial-gradient(circle at 84% 12%, rgba(157, 178, 173, .14), transparent 27%); }

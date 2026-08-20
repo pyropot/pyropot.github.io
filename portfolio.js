@@ -3,7 +3,7 @@ const body = document.body;
 const savedTextPreference = localStorage.getItem("pyropot-text");
 
 const settings = {
-  theme: localStorage.getItem("pyropot-theme") || localStorage.getItem("pyropot-background") || "workshop",
+  theme: localStorage.getItem("pyropot-theme") || localStorage.getItem("pyropot-background") || "drafting",
   mode: localStorage.getItem("pyropot-mode") || "system",
   text: savedTextPreference === "small" ? "compact" : savedTextPreference || "compact",
   reduceMotion: localStorage.getItem("pyropot-motion") === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -70,7 +70,7 @@ systemScheme.addEventListener("change", () => {
 
 document.querySelector("#resetSettings").addEventListener("click", () => {
   Object.assign(settings, {
-    theme: "workshop",
+    theme: "drafting",
     mode: "system",
     text: "compact",
     reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
