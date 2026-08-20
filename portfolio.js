@@ -2,7 +2,7 @@ const root = document.documentElement;
 const body = document.body;
 
 const settings = {
-  theme: localStorage.getItem("pyropot-theme") || localStorage.getItem("pyropot-background") || "drafting",
+  theme: localStorage.getItem("pyropot-theme") || localStorage.getItem("pyropot-background") || "workshop",
   mode: localStorage.getItem("pyropot-mode") || "system",
   text: localStorage.getItem("pyropot-text") || "normal",
   reduceMotion: localStorage.getItem("pyropot-motion") === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -69,7 +69,7 @@ systemScheme.addEventListener("change", () => {
 
 document.querySelector("#resetSettings").addEventListener("click", () => {
   Object.assign(settings, {
-    theme: "drafting",
+    theme: "workshop",
     mode: "system",
     text: "normal",
     reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
