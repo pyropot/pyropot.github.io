@@ -204,13 +204,81 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 document.querySelector("#year").textContent = new Date().getFullYear();
+const contactForm = document.querySelector("#contactForm");
+const contactSubmit = document.querySelector("#contactSubmit");
 const formStatus = document.querySelector("#formStatus");
-if (new URLSearchParams(window.location.search).get("message") === "sent") {
-  formStatus.textContent = "Message sent — thank you. I’ll reply by email.";
+
+function clearFormErrors() {
+  contactForm.querySelectorAll("[data-error-for]").forEach((element) => {
+    element.textContent = "";
+  });
+  contactForm.querySelectorAll("[aria-invalid]").forEach((element) => {
+    element.removeAttribute("aria-invalid");
+  });
 }
-document.querySelector("#contactForm").addEventListener("submit", () => {
-  document.querySelector("#contactSubmit").textContent = "Sending…";
-  formStatus.textContent = "Delivering to my inbox…";
+
+function showFormspreeErrors(errors) {
+  const generalErrors = [];
+  let firstInvalidField = null;
+
+  errors.forEach((error) => {
+    const fieldName = error.field || "";
+    const field = fieldName ? contactForm.elements.namedItem(fieldName) : null;
+    const errorElement = fieldName ? contactForm.querySelector(`[data-error-for="${fieldName}"]`) : null;
+
+    if (field && errorElement) {
+      field.setAttribute("aria-invalid", "true");
+      errorElement.textContent = error.message || "Please check this field.";
+      firstInvalidField ||= field;
+    } else if (error.message) {
+      generalErrors.push(error.message);
+    }
+  });
+
+  firstInvalidField?.focus();
+  return generalErrors;
+}
+
+contactForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearFormErrors();
+
+  if (!contactForm.checkValidity()) {
+    contactForm.reportValidity();
+    return;
+  }
+
+  const originalButtonContent = contactSubmit.innerHTML;
+  contactSubmit.disabled = true;
+  contactForm.setAttribute("aria-busy", "true");
+  formStatus.dataset.state = "sending";
+  formStatus.textContent = "Sending securely through Formspree…";
+
+  try {
+    const response = await fetch(contactForm.action, {
+      method: "POST",
+      body: new FormData(contactForm),
+      headers: { Accept: "application/json" }
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errors = Array.isArray(result.errors) ? result.errors : [];
+      const generalErrors = showFormspreeErrors(errors);
+      throw new Error(generalErrors[0] || result.error || "Formspree could not deliver this message.");
+    }
+
+    contactForm.reset();
+    formStatus.dataset.state = "success";
+    formStatus.textContent = "Message sent — thank you. I’ll reply by email.";
+  } catch (error) {
+    formStatus.dataset.state = "error";
+    formStatus.textContent = `${error.message || "The message could not be sent."} You can also email me directly at ltrevillian@ycp.edu.`;
+  } finally {
+    contactSubmit.disabled = false;
+    contactSubmit.innerHTML = originalButtonContent;
+    contactForm.removeAttribute("aria-busy");
+  }
 });
 
 applySettings();

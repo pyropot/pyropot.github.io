@@ -39,12 +39,14 @@ html[data-mode="light"] {
   --shadow: 0 28px 70px rgba(54, 48, 34, .12);
 }
 
+body[data-theme="signal"] { --accent: #ff646d; --accent-2: #79d7c3; }
 body[data-theme="workshop"] { --accent: #e5be64; --accent-2: #9db2ad; }
 body[data-theme="cardroom"] { --accent: #ff8061; --accent-2: #46d1ac; }
 body[data-theme="aurora"] { --accent: #7ce8c5; --accent-2: #8fa6ff; }
 body[data-theme="grid"] { --accent: #78d8e8; --accent-2: #9cb3ff; }
 body[data-theme="sunset"] { --accent: #ffab69; --accent-2: #f985b4; }
 body[data-theme="calm"] { --accent: #83d0ce; --accent-2: #86aeea; }
+html[data-mode="light"] body[data-theme="signal"] { --accent: #b4212c; --accent-2: #187462; }
 html[data-mode="light"] body[data-theme="workshop"] { --accent: #80601a; --accent-2: #4e6863; }
 html[data-mode="light"] body[data-theme="cardroom"] { --accent: #b23c28; --accent-2: #08765a; }
 html[data-mode="light"] body[data-theme="aurora"] { --accent: #08765a; --accent-2: #445fc6; }
@@ -89,6 +91,7 @@ body::after {
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, black, transparent 78%);
 }
+body[data-theme="signal"]::before { background: radial-gradient(circle at 13% 9%, rgba(255, 64, 82, .22), transparent 29%), radial-gradient(circle at 86% 20%, rgba(72, 204, 175, .16), transparent 31%), linear-gradient(125deg, rgba(89, 14, 29, .13), transparent 58%); }
 body[data-theme="workshop"]::before { background: linear-gradient(115deg, rgba(229, 190, 100, .08), transparent 30%), radial-gradient(circle at 84% 12%, rgba(157, 178, 173, .14), transparent 27%); }
 body[data-theme="workshop"]::after { opacity: .18; background-image: repeating-linear-gradient(0deg, transparent 0 35px, var(--line) 36px); background-size: auto; }
 body[data-theme="cardroom"]::before { background: radial-gradient(circle at 13% 12%, rgba(255, 99, 74, .25), transparent 28%), radial-gradient(circle at 83% 20%, rgba(37, 194, 149, .2), transparent 32%), linear-gradient(145deg, rgba(46, 10, 24, .35), transparent 65%); }
@@ -133,6 +136,7 @@ h3 { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; line-height: 1.25; 
 .nav-actions { display: flex; align-items: center; gap: 9px; }
 .button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 10px; padding: 0 19px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: .82rem; font-weight: 800; transition: transform .2s, border-color .2s, background-color .2s; }
 .button:hover { transform: translateY(-2px); }
+.button:disabled { cursor: wait; opacity: .62; transform: none; }
 .button-primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 .button-secondary, .button-quiet { color: var(--text); background: var(--surface-soft); }
 .button-secondary:hover, .button-quiet:hover { border-color: var(--accent); }
@@ -270,8 +274,12 @@ form input, form textarea { width: 100%; padding: 13px 14px; }
 form textarea { min-height: 154px; resize: vertical; }
 .form-footer { display: flex; align-items: center; gap: 17px; }
 .form-note { margin: 0; color: var(--muted); font-size: .65rem; line-height: 1.5; }
-.form-status { min-height: 20px; margin: 0; color: var(--success); font-size: .74rem; font-weight: 700; }
-.honeypot { position: absolute !important; left: -10000px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
+.form-status { min-height: 20px; margin: 0; color: var(--muted); font-size: .74rem; font-weight: 700; }
+.form-status[data-state="sending"] { color: var(--accent); }
+.form-status[data-state="success"] { color: var(--success); }
+.form-status[data-state="error"] { color: var(--danger); }
+.field-error { min-height: 1em; color: var(--danger); font-size: .62rem; font-weight: 700; letter-spacing: 0; line-height: 1.35; text-transform: none; }
+form input[aria-invalid="true"], form textarea[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent); }
 
 .site-footer { padding: 55px 0; border-top: 1px solid var(--line); }
 .footer-inner { display: grid; grid-template-columns: 1fr auto; gap: 35px; }
