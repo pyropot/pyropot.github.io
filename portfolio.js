@@ -1,10 +1,11 @@
 const root = document.documentElement;
 const body = document.body;
+const savedTextPreference = localStorage.getItem("pyropot-text");
 
 const settings = {
   theme: localStorage.getItem("pyropot-theme") || localStorage.getItem("pyropot-background") || "workshop",
   mode: localStorage.getItem("pyropot-mode") || "system",
-  text: localStorage.getItem("pyropot-text") || "normal",
+  text: savedTextPreference === "small" ? "compact" : savedTextPreference || "compact",
   reduceMotion: localStorage.getItem("pyropot-motion") === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   highContrast: localStorage.getItem("pyropot-contrast") === "on"
 };
@@ -71,7 +72,7 @@ document.querySelector("#resetSettings").addEventListener("click", () => {
   Object.assign(settings, {
     theme: "workshop",
     mode: "system",
-    text: "normal",
+    text: "compact",
     reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     highContrast: false
   });
